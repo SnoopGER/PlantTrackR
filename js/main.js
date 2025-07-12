@@ -16,7 +16,7 @@ class Plant {
         this.name = name;
         this.seedDate = seedDate;
         this.events = [];
-        this.phase = 'Germination'; // Default phase
+        this.phase = 'Seedling'; // New default phase
     }
 
     addEvent(eventType, date) {
@@ -151,31 +151,41 @@ class PlantManager {
         this.plants.forEach(plant => {
             console.log(`Rendering plant ${plant.name} with events:`, plant.events);
             const plantDiv = document.createElement('div');
-            plantDiv.className = 'plant';
+            plantDiv.className = 'plant-card';
             plantDiv.innerHTML = `
-                <h3>${plant.name}</h3>
-                <p>Seeded on: ${plant.seedDate}</p>
-
-                <!-- Phase dropdown -->
-                <div class="phase-dropdown">
-                    <label for="phase-${plant.name}">Phase:</label>
-                    <select id="phase-${plant.name}" data-name="${plant.name}">
-                        <option value="Germination" ${plant.phase === 'Germination' ? 'selected' : ''}>Germination</option>
-                        <option value="Seedling" ${plant.phase === 'Seedling' ? 'selected' : ''}>Seedling</option>
-                        <option value="Vegetative" ${plant.phase === 'Vegetative' ? 'selected' : ''}>Vegetative</option>
-                        <option value="Flowering" ${plant.phase === 'Flowering' ? 'selected' : ''}>Flowering</option>
-                        <option value="Drying" ${plant.phase === 'Drying' ? 'selected' : ''}>Drying</option>
-                        <option value="Curing" ${plant.phase === 'Curing' ? 'selected' : ''}>Curing</option>
-                    </select>
+                <div class="card-header">
+                    <h3>${plant.name}</h3>
+                    <p>Seeded on: ${plant.seedDate}</p>
                 </div>
 
-                <button class="add-event-btn" data-name="${plant.name}">Add Event</button>
-                <button class="delete-btn" data-name="${plant.name}">Delete</button>
-                <button class="archive-btn" data-name="${plant.name}">Archive</button>
+                <!-- Enhanced Phase Control -->
+                <div class="phase-control">
+                    <label for="phase-${plant.name}">Phase:</label>
+                    <button class="phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}" data-name="${plant.name}">
+                        ${plant.phase}
+                    </button>
+
+                    <!-- Dropdown menu with all phases -->
+                    <div class="phase-menu" id="phase-menu-${plant.name}" style="display: none;">
+                       <button class="phase-option phase-seedling" data-phase="Seedling" data-name="${plant.name}">Seedling</button>
+                       <button class="phase-option phase-vegetative" data-phase="Vegetative" data-name="${plant.name}">Vegetative</button>
+                       <button class="phase-option phase-flowering" data-phase="Flowering" data-name="${plant.name}">Flowering</button>
+                       <button class="phase-option phase-drying" data-phase="Drying" data-name="${plant.name}">Drying</button>
+                       <button class="phase-option phase-curing" data-phase="Curing" data-name="${plant.name}">Curing</button>
+                       <button class="phase-option phase-mutter" data-phase="Mutter" data-name="${plant.name}">Mutter</button>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="card-actions">
+                    <button class="add-event-btn" data-name="${plant.name}"><span>📅</span> Add Event</button>
+                    <button class="delete-btn" data-name="${plant.name}"><span>🗑️</span> Delete</button>
+                    <button class="archive-btn" data-name="${plant.name}"><span>✏️</span> Archive</button>
+                </div>
 
                 <!-- Events dropdown -->
                 <div class="events-dropdown">
-                    <button class="toggle-events-btn" data-name="${plant.name}">View Events ▼</button>
+                    <button class="toggle-events-btn" data-name="${plant.name}"><span>📋</span> View Events ▼</button>
                     <div class="events-list" id="events-${plant.name}" style="display: none;">
                         ${this.renderEvents(plant.events, plant.name)}
                     </div>
@@ -240,6 +250,9 @@ class PlantManager {
             localStorage.setItem('plants', JSON.stringify(this.plants));
 
             console.log(`Updated phase for ${plantName} to ${newPhase}`);
+
+            // Re-render the plants to update all UI elements
+            this.renderPlants();
         }
     }
 
@@ -305,17 +318,25 @@ class PlantManager {
     }
 
     exportData() {
-        const data = localStorage.getItem('plants');
-        if (data) {
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'plant_data.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
+        // Export both plants and archivedPlants data
+        const plantsData = localStorage.getItem('plants') || '[]';
+        const archivedPlantsData = localStorage.getItem('archivedPlants') || '[]';
+
+        const exportData = {
+            plants: JSON.parse(plantsData),
+            archivedPlants: JSON.parse(archivedPlantsData)
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'plant_data.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        alert('Plant data exported successfully!');
     }
 
     addEventToPlant(plantName, eventType, date) {
@@ -487,6 +508,14 @@ setupEventListeners() {
         });
     }
 
+    // Set up export button event listener
+    const exportBtn = document.getElementById('export-data-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            this.exportData();
+        });
+    }
+
     // Set up archive toggle
     const archiveToggle = document.querySelector('#archive-list h2');
     if (archiveToggle) {
@@ -580,12 +609,75 @@ setupEventListeners() {
             e.stopPropagation();
         }
 
-        // Phase dropdown change
-        if (e.target.tagName === 'SELECT' && e.target.classList.contains('phase-dropdown')) {
+        // Phase button click - toggle menu
+        if (e.target.classList.contains('phase-btn')) {
             const plantName = e.target.dataset.name;
-            const newPhase = e.target.value;
-            this.updatePlantPhase(plantName, newPhase);
+            const phaseMenu = document.getElementById(`phase-menu-${plantName}`);
+
+            // Close all other phase menus first
+            document.querySelectorAll('.phase-menu').forEach(menu => {
+                if (menu.id !== `phase-menu-${plantName}`) {
+                    menu.style.display = 'none';
+                }
+            });
+
+            // Toggle this menu
+            if (phaseMenu) {
+                const isVisible = phaseMenu.style.display === 'block';
+                phaseMenu.style.display = isVisible ? 'none' : 'block';
+
+                // Prevent menu from being cut off by card boundaries
+                if (!isVisible) {
+                    setTimeout(() => {
+                        // Check if menu would be cut off and adjust position if needed
+                        const rect = phaseMenu.getBoundingClientRect();
+                        const cardRect = plantDiv.getBoundingClientRect();
+
+                        if (rect.bottom > window.innerHeight) {
+                            // Move menu up if it goes beyond viewport
+                            phaseMenu.style.top = `-${Math.max(0, rect.bottom - window.innerHeight + 10)}px`;
+                        } else if (rect.bottom > cardRect.bottom) {
+                            // Move menu up if it goes beyond card boundaries
+                            phaseMenu.style.top = `-${Math.max(0, rect.bottom - cardRect.bottom + 5)}px`;
+                        }
+                    }, 10);
+                } else {
+                    // Reset position when closing
+                    phaseMenu.style.top = '100%';
+                }
+            }
+
             e.stopPropagation();
+        }
+
+        // Phase option click - update plant phase
+        if (e.target.classList.contains('phase-option')) {
+            const plantName = e.target.dataset.name;
+            const newPhase = e.target.dataset.phase;
+
+            this.updatePlantPhase(plantName, newPhase);
+
+            // Update the button text and class
+            const phaseBtn = document.querySelector(`button.phase-btn[data-name="${plantName}"]`);
+            if (phaseBtn) {
+                phaseBtn.textContent = newPhase;
+                phaseBtn.className = `phase-btn phase-btn-${newPhase.toLowerCase().replace(' ', '-')}`;
+
+                // Close the menu after selection
+                const phaseMenu = document.getElementById(`phase-menu-${plantName}`);
+                if (phaseMenu) {
+                    phaseMenu.style.display = 'none';
+                }
+            }
+
+            e.stopPropagation();
+        }
+
+        // Close phase menus when clicking outside
+        if (!e.target.closest('.phase-control')) {
+            document.querySelectorAll('.phase-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
         }
     }
 }

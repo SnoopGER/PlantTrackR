@@ -1,15 +1,24 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 20px;
     line-height: 1.6;
-}
-
-h1, h2 {
+    background-color: #f5f7fa;
     color: #333;
 }
 
+h1, h2 {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+h1 {
+    margin-top: 0;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+}
+
 #plant-list {
-    margin-bottom: 20px;
+    margin-bottom: 30px;
 }
 
 #calendar {
@@ -122,33 +131,210 @@ h1, h2 {
     font-size: 0.8em;
 }
 
-/* Phase dropdown styles */
-.phase-dropdown {
-    margin-top: 10px;
+/* Card-style plant container */
+.plant-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 25px;
+    margin-bottom: 30px;
+    transition: all 0.3s ease;
+    border: 1px solid #e0e0e0;
+    position: relative;
+    overflow: visible; /* Allow phase menu to expand outside */
 }
 
-.phase-dropdown label {
-    margin-right: 5px;
-    font-weight: bold;
+.plant-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
-.phase-dropdown select {
-    padding: 5px;
-    border-radius: 4px;
+/* Card header styles */
+.card-header h3 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 1.4em;
+    font-weight: 600;
+}
+
+.card-header p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+/* Phase control styles */
+.phase-control {
+    margin-top: 15px;
+    position: relative;
+    display: inline-block;
+}
+
+.phase-control label {
+    margin-right: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+/* Phase button styles */
+.phase-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    text-transform: capitalize;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+/* Phase button hover effect */
+.phase-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Phase-specific colors */
+.phase-btn-seedling { background-color: #ffd700; color: black; }
+.phase-btn-mutter { background-color: #ff69b4; color: white; }
+.phase-btn-vegetative { background-color: #4682b4; color: white; }
+.phase-btn-flowering { background-color: #ff6347; color: white; }
+.phase-btn-drying { background-color: #8b0000; color: white; }
+.phase-btn-curing { background-color: #9932cc; color: white; }
+
+/* Phase menu styles */
+.phase-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 8px;
+    background-color: white;
     border: 1px solid #ddd;
-    background-color: #f9f9f9;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 3;
+    display: none;
+    min-width: 200px; /* Ensure menu has enough width */
+}
+
+.phase-option {
+    width: 100%;
+    padding: 10px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+    font-weight: 500;
+}
+
+.phase-option:hover {
+    background-color: #f8f9fa;
+}
+
+/* Phase-specific colors for options */
+.phase-seedling { color: #ffd700; }
+.phase-mutter { color: #ff69b4; }
+.phase-vegetative { color: #4682b4; }
+.phase-flowering { color: #ff6347; }
+.phase-drying { color: #8b0000; }
+.phase-curing { color: #9932cc; }
+
+/* Action buttons */
+.card-actions {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.card-actions button {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* Events dropdown */
+.events-dropdown {
+    margin-top: 20px;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 15px;
+}
+
+.toggle-events-btn {
+    background-color: #f0f8ff;
+    border: 1px solid #d1e7dd;
+    padding: 8px 15px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-events-btn span {
+    margin-right: 6px;
+    font-size: 1.2em;
+}
+
+/* Dark mode styles */
+body.dark-mode .plant-card {
+    background-color: #1e1e1e;
+    color: #cccccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .card-header h3 {
+    color: #ffffff;
+}
+
+body.dark-mode .card-header p {
+    color: #aaaaaa;
+}
+
+body.dark-mode .phase-btn {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .phase-menu {
+    background-color: #1e1e1e;
+    border-color: #333;
+}
+
+body.dark-mode .phase-option {
+    color: #cccccc;
+}
+
+body.dark-mode .phase-option:hover {
+    background-color: #2a2a2a;
+}
+
+body.dark-mode .card-actions button {
+    background-color: #2a82da;
+    color: #ffffff;
+    border: 1px solid #1c6cb9;
+}
+
+body.dark-mode .toggle-events-btn {
+    background-color: #2a82da;
+    border-color: #1c6cb9;
+    color: #ffffff;
 }
 
 /* Archive section styles */
 .archive-section {
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px solid #eee;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
 }
 
 .archive-section h2 {
     cursor: pointer;
-    color: #555;
+    color: #2c3e50;
+    font-weight: 600;
 }
 
 .archived-plant {
@@ -158,63 +344,119 @@ h1, h2 {
     background-color: #f9f9f9;
 }
 
-/* Dark mode styles */
+/* Dark mode styles with improved contrast */
+body.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
 body.dark-mode .events-list {
-    background-color: #333;
-    border-color: #444;
+    background-color: #1e1e1e;
+    border-color: #333;
+    color: #cccccc;
 }
 
 body.dark-mode .event {
-    border-bottom-color: #444;
-    color: #ddd;
+    border-bottom-color: #333;
+    color: #cccccc;
 }
 
 body.dark-mode .toggle-events-btn {
-    background-color: #444;
-    border-color: #555;
-    color: #ddd;
+    background-color: #2a82da; /* Bright blue */
+    border-color: #1c6cb9;
+    color: #ffffff;
 }
 
 body.dark-mode .delete-event-btn {
-    background-color: #ff6b6b;
+    background-color: #ff6b6b; /* Bright red */
+    border: 1px solid #cc5d5d;
+    color: #ffffff;
 }
 
-/* Calendar dark mode styles */
+/* Calendar dark mode styles with improved contrast */
 body.dark-mode #calendar {
-    background-color: #333;
-    border-color: #444;
-    color: #ddd;
+    background-color: #1e1e1e;
+    border-color: #333;
+    color: #cccccc;
 }
 
 body.dark-mode .calendar-header button {
-    background-color: #444;
-    border-color: #555;
-    color: #ddd;
+    background-color: #2a82da; /* Bright blue */
+    border-color: #1c6cb9;
+    color: #ffffff;
 }
 
 body.dark-mode .day {
-    color: #ddd;
+    color: #cccccc;
+    background-color: #1e1e1e;
 }
 
 body.dark-mode .day.empty {
-    background-color: #222;
+    background-color: #2a2a2a;
+    color: #666666;
 }
 
 body.dark-mode .day:hover:not(.empty) {
-    background-color: #444;
+    background-color: #333;
 }
 
 body.dark-mode .day.today {
-    background-color: #555;
+    background-color: #444;
 }
 
-/* Archived plants dark mode styles */
+/* Archived plants dark mode styles with improved contrast */
 body.dark-mode .archive-section {
-    border-top-color: #444;
+    border-top-color: #333;
 }
 
 body.dark-mode .archived-plant {
+    background-color: #1e1e1e;
+    border-color: #333;
+    color: #cccccc;
+}
+
+/* Input fields and buttons */
+body.dark-mode input[type="text"],
+body.dark-mode input[type="date"] {
     background-color: #333;
-    border-color: #444;
-    color: #ddd;
+    color: #ffffff;
+    border: 1px solid #555;
+}
+
+body.dark-mode button {
+    background-color: #2a82da; /* Bright blue */
+    color: #ffffff;
+    border: 1px solid #1c6cb9;
+}
+
+
+/* Status indicators */
+body.dark-mode .status-indicator {
+    display: inline-block;
+    margin-right: 5px;
+    font-weight: bold;
+}
+
+body.dark-mode .status-mutter {
+    color: #ff69b4; /* Hot pink */
+}
+
+body.dark-mode .status-seedling {
+    color: #ffd700; /* Gold */
+}
+
+body.dark-mode .status-vegetative {
+    color: #4682b4; /* Blue */
+}
+
+body.dark-mode .status-flowering {
+    color: #ff6347; /* Tomato red */
+}
+
+body.dark-mode .status-drying {
+    color: #8b0000; /* Dark red */
+}
+
+body.dark-mode .status-curing {
+    color: #9932cc; /* Dark purple */
 }
