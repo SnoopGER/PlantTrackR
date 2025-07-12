@@ -1,20 +1,38 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize plant manager
-    const plantManager = new PlantManager();
+    // Initialize plant manager using singleton pattern
+    const plantManager = PlantManager.getInstance();
 
-    // Set up event listeners for plants
-    document.getElementById('add-plant-btn').addEventListener('click', function() {
-        plantManager.addPlant();
-    });
+    // Set up event listeners for plants with proper cleanup
+    const addPlantBtn = document.getElementById('add-plant-btn');
+    if (addPlantBtn) {
+        // Add click event listener to the button
+        addPlantBtn.addEventListener('click', function() {
+            plantManager.addPlant();
+        });
+    }
 
-    document.getElementById('export-data-btn').addEventListener('click', function() {
-        plantManager.exportData();
-    });
+    const exportDataBtn = document.getElementById('export-data-btn');
+    if (exportDataBtn) {
+        // Remove existing event listeners first by replacing the element
+        const parent = exportDataBtn.parentNode;
+        const newExportDataBtn = exportDataBtn.cloneNode(true);
+        parent.replaceChild(newExportDataBtn, exportDataBtn);
+    
+        // Add event listener to the new button
+        newExportDataBtn.addEventListener('click', function() {
+            plantManager.exportData();
+        });
+    }
 
     // Set up archive toggle
     const archiveToggle = document.querySelector('#archive-list h2');
     if (archiveToggle) {
-        archiveToggle.addEventListener('click', function() {
+        // Remove existing event listeners first by replacing the element
+        const newArchiveToggle = archiveToggle.cloneNode(true);
+        archiveToggle.parentNode.replaceChild(newArchiveToggle, archiveToggle);
+
+        // Add click event listener to the new element
+        newArchiveToggle.addEventListener('click', function() {
             const archivedPlantsDiv = document.getElementById('archived-plants');
             if (archivedPlantsDiv.style.display === 'none') {
                 archivedPlantsDiv.style.display = 'block';
@@ -23,6 +41,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Set up event delegation for the entire document
+    plantManager.setupEventListeners();
+
+    // Initialize Calendar using singleton pattern
+    const calendar = Calendar.getInstance();
+    calendar.renderCalendar();
 });
 
 // Plant class to represent a plant
@@ -31,7 +56,7 @@ class Plant {
         this.name = name;
         this.seedDate = seedDate;
         this.events = [];
-        this.phase = 'Seedling'; // Default phase
+        this.phase = 'Germination'; // Default phase
     }
 
     addEvent(eventType, date) {
@@ -53,49 +78,41 @@ class Plant {
     }
 }
 
-// Event handler functions for edit buttons (using event delegation)
-function handleDeleteEventClick(e) {
-    if (e.target.classList.contains('delete-event-btn')) {
-        const plantName = e.target.dataset.plant;
-        const eventIndex = parseInt(e.target.dataset.index);
-        const plantManager = new PlantManager();
-        plantManager.removeEvent(plantName, eventIndex);
-    }
-}
-
-function handleEditEventClick(e) {
-    if (e.target.classList.contains('edit-event-btn')) {
-        const plantName = e.target.dataset.plant;
-        const eventIndex = parseInt(e.target.dataset.index);
-        const plantManager = new PlantManager();
-        plantManager.editEvent(plantName, eventIndex);
-    }
-}
-
-function handleEditDateClick(e) {
-    if (e.target.classList.contains('edit-date-btn')) {
-        const plantName = e.target.dataset.plant;
-        const eventIndex = parseInt(e.target.dataset.index);
-        const plantManager = new PlantManager();
-        plantManager.editDate(plantName, eventIndex);
-    }
-}
-
 // PlantManager class to handle plant operations
 class PlantManager {
     constructor() {
+        if (PlantManager.instance) {
+            return PlantManager.instance;
+        }
+
         this.plants = [];
         this.archivedPlants = [];
-        this.initStorage();
 
-        // Load plants from storage
+        // Initialize storage and load data only once
+        this.initStorage();
         this.loadPlants();
         this.loadArchivedPlants();
 
-        // Set up event delegation for the entire document
-        this.setupEventListeners();
+        // Store bound functions for proper cleanup
+        this.handleDocumentClick = this.handleDocumentClick.bind(this);
+
+        // Set the instance
+        PlantManager.instance = this;
+
+        return this;
     }
 
+    static getInstance() {
+        if (!PlantManager.instance) {
+            PlantManager.instance = new PlantManager();
+        }
+        return PlantManager.instance;
+    }
+
+// Event handler functions for edit buttons (using event delegation)
+// These are no longer needed as all event handling is done through the singleton instance
+
+// PlantManager class to handle plant operations
     initStorage() {
         // Initialize localStorage if needed
         if (!localStorage.getItem('plants')) {
@@ -174,10 +191,12 @@ class PlantManager {
                 <div class="phase-dropdown">
                     <label for="phase-${plant.name}">Phase:</label>
                     <select id="phase-${plant.name}" data-name="${plant.name}">
+                        <option value="Germination" ${plant.phase === 'Germination' ? 'selected' : ''}>Germination</option>
                         <option value="Seedling" ${plant.phase === 'Seedling' ? 'selected' : ''}>Seedling</option>
-                        <option value="Minime" ${plant.phase === 'Minime' ? 'selected' : ''}>Minime</option>
-                        <option value="Blooming" ${plant.phase === 'Blooming' ? 'selected' : ''}>Blooming</option>
-                        <option value="Fertig" ${plant.phase === 'Fertig' ? 'selected' : ''}>Fertig</option>
+                        <option value="Vegetative" ${plant.phase === 'Vegetative' ? 'selected' : ''}>Vegetative</option>
+                        <option value="Flowering" ${plant.phase === 'Flowering' ? 'selected' : ''}>Flowering</option>
+                        <option value="Drying" ${plant.phase === 'Drying' ? 'selected' : ''}>Drying</option>
+                        <option value="Curing" ${plant.phase === 'Curing' ? 'selected' : ''}>Curing</option>
                     </select>
                 </div>
 
@@ -368,31 +387,29 @@ class PlantManager {
         if (!plant) {
             plant = this.archivedPlants.find(p => p.name === plantName);
         }
-
+        
         if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
             const currentEvent = plant.events[eventIndex];
             const newType = prompt('Enter new event type:', currentEvent.type);
-
+        
             if (newType) {
                 // Update the event
                 plant.events[eventIndex].type = newType;
-
+        
                 // Save to localStorage - determine which storage to use
                 if (this.plants.includes(plant)) {
                     localStorage.setItem('plants', JSON.stringify(this.plants));
                 } else { // archived plants
                     localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
                 }
-
+        
                 // Update UI - find the specific events list for this plant and update it
                 const eventsList = document.getElementById(`events-${plantName}`);
                 if (eventsList) {
                     // Replace all events in the list to show complete history
                     eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
                 }
-
-                // Note: All event listeners are now handled through delegation in setupEventListeners()
-
+        
                 alert(`Updated event for ${plantName}`);
             }
         } else {
@@ -408,33 +425,31 @@ class PlantManager {
         if (!plant) {
             plant = this.archivedPlants.find(p => p.name === plantName);
         }
-
+        
         if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
             const currentEvent = plant.events[eventIndex];
             const newDateStr = prompt('Enter new date (YYYY-MM-DD):', this.formatDateForInput(currentEvent.date));
-
+        
             // Validate and parse the date
             const newDate = this.parseDate(newDateStr);
             if (newDate) {
                 // Update the event
                 plant.events[eventIndex].date = newDate.toISOString();
-
+        
                 // Save to localStorage - determine which storage to use
                 if (this.plants.includes(plant)) {
                     localStorage.setItem('plants', JSON.stringify(this.plants));
                 } else { // archived plants
                     localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
                 }
-
+        
                 // Update UI - find the specific events list for this plant and update it
                 const eventsList = document.getElementById(`events-${plantName}`);
                 if (eventsList) {
                     // Replace all events in the list to show complete history
                     eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
                 }
-
-                // Note: All event listeners are now handled through delegation in setupEventListeners()
-
+        
                 alert(`Updated date for ${plantName}'s event`);
             } else {
                 alert('Invalid date format. Please use YYYY-MM-DD.');
@@ -472,15 +487,15 @@ class PlantManager {
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
+// Centralized event listener setup using delegation
+setupEventListeners() {
+    // Remove existing event listeners if they exist to prevent duplicates
+    document.removeEventListener('click', this.handleDocumentClick);
 
-    // Centralized event listener setup using delegation
-    setupEventListeners() {
-        // Remove existing event listeners if they exist to prevent duplicates
-        document.removeEventListener('click', this.handleDocumentClick);
+    // Set up event delegation for the entire document
+    document.addEventListener('click', this.handleDocumentClick);
+}
 
-        // Set up event delegation for the entire document
-        document.addEventListener('click', this.handleDocumentClick.bind(this));
-    }
 
     handleDocumentClick(e) {
         // Edit event buttons

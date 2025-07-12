@@ -1,9 +1,3 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize calendar
-    const calendar = Calendar.getInstance();
-    calendar.renderCalendar();
-});
-
 class Calendar {
     constructor() {
         if (Calendar.instance) {
@@ -106,7 +100,7 @@ class Calendar {
             const eventType = prompt('Enter event type (water, fertilizer, etc.):');
             if (eventType) {
                 // Get the PlantManager instance and add the event
-                const plantManager = new PlantManager();
+                const plantManager = PlantManager.getInstance();
                 plantManager.addEventToPlant(this.selectedPlant.name, eventType, date.toISOString());
 
                 // Update calendar display
