@@ -157,3 +157,64 @@ h1, h2 {
     border: 1px solid #ddd;
     background-color: #f9f9f9;
 }
+
+/* Dark mode styles */
+body.dark-mode .events-list {
+    background-color: #333;
+    border-color: #444;
+}
+
+body.dark-mode .event {
+    border-bottom-color: #444;
+    color: #ddd;
+}
+
+body.dark-mode .toggle-events-btn {
+    background-color: #444;
+    border-color: #555;
+    color: #ddd;
+}
+
+body.dark-mode .delete-event-btn {
+    background-color: #ff6b6b;
+}
+
+/* Calendar dark mode styles */
+body.dark-mode #calendar {
+    background-color: #333;
+    border-color: #444;
+    color: #ddd;
+}
+
+body.dark-mode .calendar-header button {
+    background-color: #444;
+    border-color: #555;
+    color: #ddd;
+}
+
+body.dark-mode .day {
+    color: #ddd;
+}
+
+body.dark-mode .day.empty {
+    background-color: #222;
+}
+
+body.dark-mode .day:hover:not(.empty) {
+    background-color: #444;
+}
+
+body.dark-mode .day.today {
+    background-color: #555;
+}
+
+/* Archived plants dark mode styles */
+body.dark-mode .archive-section {
+    border-top-color: #444;
+}
+
+body.dark-mode .archived-plant {
+    background-color: #333;
+    border-color: #444;
+    color: #ddd;
+}

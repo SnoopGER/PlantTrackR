@@ -1,38 +1,69 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PlantTrackR</title>
-    <link rel="stylesheet" href="css/styles.css">
-</head>
-<body>
-    <h1>PlantTrackR</h1>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>PlantTrackR</title>
+<link href="css/styles.css" rel="stylesheet"/>
+<style>
+  body.dark-mode {
+    background-color: #121212;
+    color: #ddd;
+  }
+  body.dark-mode button {
+    background-color: #333;
+    color: #fff;
+  }
+  body.dark-mode input {
+    background-color: #222;
+    color: #fff;
+    border: 1px solid #555;
+  }
+</style></head>
+<body class="dark-mode">
+<h1>PlantTrackR</h1>
+<div id="plant-list">
+<h2>My Plants</h2>
+<!-- Plant items will be added here -->
+</div>
+<div id="add-plant-form">
+<h3>🌿 Add New Plant</h3>
+<input id="plantNameInput" placeholder="Plant name" type="text"/>
+<input id="plantSeedDateInput" type="date"/>
+<button id="addPlantFinalBtn">➕ Add Plant</button>
+</div>
+<div id="calendar">
+<h2>Calendar</h2>
+<!-- Calendar will be displayed here -->
+</div>
+<div id="actions">
+<h2>Actions</h2>
 
-    <div id="plant-list">
-        <h2>My Plants</h2>
-        <!-- Plant items will be added here -->
-    </div>
-
-    <div id="calendar">
-        <h2>Calendar</h2>
-        <!-- Calendar will be displayed here -->
-    </div>
-
-    <div id="actions">
-        <h2>Actions</h2>
-        <button id="add-plant-btn">Add Plant</button>
-        <button id="export-data-btn">Export Data</button>
-    </div>
-
-    <div id="archive-list" class="archive-section">
-        <h2>Archived Plants ▼</h2>
-        <div id="archived-plants" style="display: none;">
-            <!-- Archived plants will be displayed here -->
-        </div>
-    </div>
-
-    <script src="js/calendar.js"></script>
-    <script src="js/main.js"></script>
-</body>
+<button id="export-data-btn">Export Data</button>
+</div>
+<div class="archive-section" id="archive-list">
+<h2>Archived Plants ▼</h2>
+<div id="archived-plants" style="display: none;">
+<!-- Archived plants will be displayed here -->
+</div>
+</div>
+<!-- 🌿 Neues Datumseingabefeld -->
+<!-- 🌱 Umgebungsdaten -->
+<div id="environmentData" style="margin-top: 20px;">
+<h3>🌡️ Umgebungsdaten</h3>
+<p>Temperatur: <input id="tempInput" placeholder="°C" style="width:60px;" type="number"/>
+     Luftfeuchte: <input id="humidityInput" placeholder="%" style="width:60px;" type="number"/>
+     pH: <input id="phInput" placeholder="pH" step="0.1" style="width:60px;" type="number"/></p>
+</div>
+<!-- 🌘 Dark Mode Umschalter -->
+<div style="margin-top:20px;">
+<button id="toggleDarkMode">🌙 Dark Mode umschalten</button>
+</div>
+<script>
+document.getElementById("toggleDarkMode").addEventListener("click", function() {
+    document.body.classList.toggle("dark-mode");
+});
+</script>
+<script src="js/calendar.js"></script><script src="js/main.js"></script></body>
 </html>

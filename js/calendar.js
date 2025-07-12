@@ -124,3 +124,7 @@ class Calendar {
         alert(`Selected plant: ${plantName}. Click a day in the calendar to add an event.`);
     }
 }
+// 🛈 Tooltip über Kalender-Tagen anzeigen
+document.querySelectorAll('.day').forEach(day => {
+    day.title = "Klicke, um ein Ereignis an diesem Tag hinzuzufügen.";
+});
