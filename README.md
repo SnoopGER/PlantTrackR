@@ -1,4 +1,4 @@
-# Plant Tracker Web App
+# PlantTrackR Web App
 
 A simple web application for tracking plant growth with calendar functionality.
 
@@ -10,7 +10,7 @@ A simple web application for tracking plant growth with calendar functionality.
 
 ## Project Structure
 ```
-plant-tracker/
+PlantTrackR/
 ├── index.html          # Main entry point
 ├── css/
 │   └── styles.css      # Main stylesheet
