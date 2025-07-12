@@ -1,0 +1,159 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    line-height: 1.6;
+}
+
+h1, h2 {
+    color: #333;
+}
+
+#plant-list {
+    margin-bottom: 20px;
+}
+
+#calendar {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.calendar-header h3 {
+    margin: 0;
+}
+
+.calendar-header button {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.days-grid {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.day {
+    flex: 1 0 14.28%; /* 7 days in a week, so 100% / 7 */
+    text-align: center;
+    padding: 5px;
+    cursor: pointer;
+}
+
+.day.empty {
+    background-color: #f9f9f9;
+    cursor: default;
+}
+
+.day:hover:not(.empty) {
+    background-color: #e0ffe0;
+}
+
+.day.today {
+    font-weight: bold;
+    background-color: #e6ffe6;
+}
+
+#actions button {
+    display: block;
+    margin: 10px 0;
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+#actions button:hover {
+    background-color: #45a049;
+}
+
+.events-dropdown {
+    margin-top: 10px;
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+}
+
+.toggle-events-btn {
+    background-color: #e0ffe0;
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+
+.events-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 5px;
+    background-color: #f9f9f9;
+}
+
+.event {
+    margin-bottom: 5px;
+    padding: 3px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.delete-event-btn {
+    background-color: #ff6b6b;
+    border: none;
+    color: white;
+    padding: 2px 5px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 0.8em;
+}
+
+/* Phase dropdown styles */
+.phase-dropdown {
+    margin-top: 10px;
+}
+
+.phase-dropdown label {
+    margin-right: 5px;
+    font-weight: bold;
+}
+
+.phase-dropdown select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+}
+
+/* Archive section styles */
+.archive-section {
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.archive-section h2 {
+    cursor: pointer;
+    color: #555;
+}
+
+.archived-plant {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    background-color: #f9f9f9;
+}

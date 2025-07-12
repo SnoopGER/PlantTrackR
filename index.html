@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Tracker</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <h1>Plant Tracker</h1>
+
+    <div id="plant-list">
+        <h2>My Plants</h2>
+        <!-- Plant items will be added here -->
+    </div>
+
+    <div id="calendar">
+        <h2>Calendar</h2>
+        <!-- Calendar will be displayed here -->
+    </div>
+
+    <div id="actions">
+        <h2>Actions</h2>
+        <button id="add-plant-btn">Add Plant</button>
+        <button id="export-data-btn">Export Data</button>
+    </div>
+
+    <div id="archive-list" class="archive-section">
+        <h2>Archived Plants ▼</h2>
+        <div id="archived-plants" style="display: none;">
+            <!-- Archived plants will be displayed here -->
+        </div>
+    </div>
+
+    <script src="js/calendar.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
