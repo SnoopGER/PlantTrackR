@@ -149,53 +149,102 @@ class PlantManager {
 
     renderPlants() {
         const plantList = document.getElementById('plant-list');
-        plantList.innerHTML = '<h2>My Plants</h2>';
+        plantList.innerHTML = ''; // Clear existing content first
 
         this.plants.forEach(plant => {
             console.log(`Rendering plant ${plant.name} with events:`, plant.events);
             const plantDiv = document.createElement('div');
             // Add 'selected' class if this is the selected plant
             plantDiv.className = `plant-card${this.selectedPlant && this.selectedPlant.name === plant.name ? ' selected' : ''}`;
-            plantDiv.innerHTML = `
-                <div class="card-header">
-                    <h3>${plant.name}</h3>
-                    <p>Seeded on: ${plant.seedDate}</p>
-                </div>
 
-                <!-- Enhanced Phase Control -->
-                <div class="phase-control">
-                    <label for="phase-${plant.name}">Phase:</label>
-                    <button class="phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}" data-name="${plant.name}">
-                        ${plant.phase}
-                    </button>
+            // Create card header
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-header';
+            const headerTitle = document.createElement('h3');
+            headerTitle.textContent = plant.name;
+            const headerSubtitle = document.createElement('p');
+            headerSubtitle.textContent = `Seeded on: ${plant.seedDate}`;
+            cardHeader.appendChild(headerTitle);
+            cardHeader.appendChild(headerSubtitle);
 
-                    <!-- Dropdown menu with all phases -->
-                    <div class="phase-menu" id="phase-menu-${plant.name}" style="display: none;">
-                       <button class="phase-option phase-seedling" data-phase="Seedling" data-name="${plant.name}">Seedling</button>
-                       <button class="phase-option phase-vegetative" data-phase="Vegetative" data-name="${plant.name}">Vegetative</button>
-                       <button class="phase-option phase-flowering" data-phase="Flowering" data-name="${plant.name}">Flowering</button>
-                       <button class="phase-option phase-drying" data-phase="Drying" data-name="${plant.name}">Drying</button>
-                       <button class="phase-option phase-curing" data-phase="Curing" data-name="${plant.name}">Curing</button>
-                       <button class="phase-option phase-mutter" data-phase="Mutter" data-name="${plant.name}">Mutter</button>
-                    </div>
-                </div>
+            // Create phase control
+            const phaseControl = document.createElement('div');
+            phaseControl.className = 'phase-control';
+            const phaseLabel = document.createElement('label');
+            phaseLabel.setAttribute('for', `phase-${plant.name}`);
+            phaseLabel.textContent = 'Phase:';
+            const phaseButton = document.createElement('button');
+            phaseButton.className = `phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}`;
+            phaseButton.dataset.name = plant.name;
+            phaseButton.textContent = plant.phase;
 
-                <!-- Action buttons -->
-                <div class="card-actions">
-                    <button class="add-event-btn" data-name="${plant.name}" title="${this.selectedPlant && this.selectedPlant.name === plant.name ? 'Add event to this plant' : 'Select this plant by clicking its card (➡️)'}"><span>📅</span> Add Event</button>
-                    <button class="delete-btn" data-name="${plant.name}"><span>🗑️</span> Delete</button>
-                    <button class="archive-btn" data-name="${plant.name}"><span>✏️</span> Archive</button>
-                </div>
+            // Create phase menu
+            const phaseMenu = document.createElement('div');
+            phaseMenu.className = 'phase-menu';
+            phaseMenu.id = `phase-menu-${plant.name}`;
+            phaseMenu.style.display = 'none';
 
-                <!-- Events dropdown -->
-                <div class="events-dropdown">
-                    <button class="toggle-events-btn" data-name="${plant.name}"><span>📋</span> View Events ▼</button>
-                    <div class="events-list" id="events-${plant.name}" style="display: none;">
-                        ${this.renderEvents(plant.events, plant.name)}
-                    </div>
-                </div>
+            const phases = ['Seedling', 'Vegetative', 'Flowering', 'Drying', 'Curing', 'Mutter'];
+            phases.forEach(phase => {
+                const option = document.createElement('button');
+                option.className = `phase-option phase-${phase.toLowerCase().replace(' ', '-')}`;
+                option.dataset.phase = phase;
+                option.dataset.name = plant.name;
+                option.textContent = phase;
+                phaseMenu.appendChild(option);
+            });
 
-            `;
+            phaseControl.appendChild(phaseLabel);
+            phaseControl.appendChild(phaseButton);
+            phaseControl.appendChild(phaseMenu);
+
+            // Create action buttons
+            const cardActions = document.createElement('div');
+            cardActions.className = 'card-actions';
+
+            const addEventBtn = document.createElement('button');
+            addEventBtn.className = 'add-event-btn';
+            addEventBtn.dataset.name = plant.name;
+            addEventBtn.title = this.selectedPlant && this.selectedPlant.name === plant.name ? 'Add event to this plant' : 'Select this plant by clicking its card (➡️)';
+            addEventBtn.innerHTML = '<span>📅</span> Add Event';
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.dataset.name = plant.name;
+            deleteBtn.innerHTML = '<span>🗑️</span> Delete';
+
+            const archiveBtn = document.createElement('button');
+            archiveBtn.className = 'archive-btn';
+            archiveBtn.dataset.name = plant.name;
+            archiveBtn.innerHTML = '<span>✏️</span> Archive';
+
+            cardActions.appendChild(addEventBtn);
+            cardActions.appendChild(deleteBtn);
+            cardActions.appendChild(archiveBtn);
+
+            // Create events dropdown
+            const eventsDropdown = document.createElement('div');
+            eventsDropdown.className = 'events-dropdown';
+
+            const toggleEventsBtn = document.createElement('button');
+            toggleEventsBtn.className = 'toggle-events-btn';
+            toggleEventsBtn.dataset.name = plant.name;
+            toggleEventsBtn.innerHTML = '<span>📋</span> View Events ▼';
+
+            const eventsList = document.createElement('div');
+            eventsList.className = 'events-list';
+            eventsList.id = `events-${plant.name}`;
+            eventsList.style.display = 'none';
+            eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
+
+            eventsDropdown.appendChild(toggleEventsBtn);
+            eventsDropdown.appendChild(eventsList);
+
+            // Append all elements to the card
+            plantDiv.appendChild(cardHeader);
+            plantDiv.appendChild(phaseControl);
+            plantDiv.appendChild(cardActions);
+            plantDiv.appendChild(eventsDropdown);
             plantList.appendChild(plantDiv);
         });
 
