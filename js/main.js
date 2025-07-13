@@ -1,13 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize plant manager using singleton pattern
     const plantManager = PlantManager.getInstance();
-
-    // Set up event delegation for the entire document
     plantManager.setupEventListeners();
 
-    // Initialize Calendar using singleton pattern
     const calendar = Calendar.getInstance();
     calendar.renderCalendar();
+
+    // Set up event delegation for calendar day clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('day') && !e.target.classList.contains('empty')) {
+            const day = e.target.dataset.day;
+            if (day) {
+                calendar.selectDay(parseInt(day, 10));
+            }
+        }
+    });
 });
 
 // Plant class to represent a plant
@@ -47,6 +53,7 @@ class PlantManager {
 
         this.plants = [];
         this.archivedPlants = [];
+        this.selectedPlant = null; // Track the currently selected plant
 
         // Initialize storage and load data only once
         this.initStorage();
@@ -69,10 +76,6 @@ class PlantManager {
         return PlantManager.instance;
     }
 
-// Event handler functions for edit buttons (using event delegation)
-// These are no longer needed as all event handling is done through the singleton instance
-
-// PlantManager class to handle plant operations
     initStorage() {
         // Initialize localStorage if needed
         if (!localStorage.getItem('plants')) {
@@ -151,7 +154,8 @@ class PlantManager {
         this.plants.forEach(plant => {
             console.log(`Rendering plant ${plant.name} with events:`, plant.events);
             const plantDiv = document.createElement('div');
-            plantDiv.className = 'plant-card';
+            // Add 'selected' class if this is the selected plant
+            plantDiv.className = `plant-card${this.selectedPlant && this.selectedPlant.name === plant.name ? ' selected' : ''}`;
             plantDiv.innerHTML = `
                 <div class="card-header">
                     <h3>${plant.name}</h3>
@@ -178,7 +182,7 @@ class PlantManager {
 
                 <!-- Action buttons -->
                 <div class="card-actions">
-                    <button class="add-event-btn" data-name="${plant.name}"><span>📅</span> Add Event</button>
+                    <button class="add-event-btn" data-name="${plant.name}" title="${this.selectedPlant && this.selectedPlant.name === plant.name ? 'Add event to this plant' : 'Select this plant by clicking its card (➡️)'}"><span>📅</span> Add Event</button>
                     <button class="delete-btn" data-name="${plant.name}"><span>🗑️</span> Delete</button>
                     <button class="archive-btn" data-name="${plant.name}"><span>✏️</span> Archive</button>
                 </div>
@@ -233,7 +237,6 @@ class PlantManager {
             </div>
         `).join('');
     }
-
 
     deletePlant(name) {
         this.plants = this.plants.filter(plant => plant.name !== name);
@@ -377,29 +380,29 @@ class PlantManager {
         if (!plant) {
             plant = this.archivedPlants.find(p => p.name === plantName);
         }
-        
+
         if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
             const currentEvent = plant.events[eventIndex];
             const newType = prompt('Enter new event type:', currentEvent.type);
-        
+
             if (newType) {
                 // Update the event
                 plant.events[eventIndex].type = newType;
-        
+
                 // Save to localStorage - determine which storage to use
                 if (this.plants.includes(plant)) {
                     localStorage.setItem('plants', JSON.stringify(this.plants));
                 } else { // archived plants
                     localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
                 }
-        
+
                 // Update UI - find the specific events list for this plant and update it
                 const eventsList = document.getElementById(`events-${plantName}`);
                 if (eventsList) {
                     // Replace all events in the list to show complete history
                     eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
                 }
-        
+
                 alert(`Updated event for ${plantName}`);
             }
         } else {
@@ -415,34 +418,37 @@ class PlantManager {
         if (!plant) {
             plant = this.archivedPlants.find(p => p.name === plantName);
         }
-        
+
         if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
             const currentEvent = plant.events[eventIndex];
             // Eingabe wird jetzt per Eingabemaske abgewickelt
-        
+
             // Validate and parse the date
-            const newDate = this.parseDate(newDateStr);
-            if (newDate) {
-                // Update the event
-                plant.events[eventIndex].date = newDate.toISOString();
-        
-                // Save to localStorage - determine which storage to use
-                if (this.plants.includes(plant)) {
-                    localStorage.setItem('plants', JSON.stringify(this.plants));
-                } else { // archived plants
-                    localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
+            const newDateStr = prompt('Enter new date (YYYY-MM-DD):', this.formatDateForInput(currentEvent.date));
+            if (newDateStr) {
+                const newDate = this.parseDate(newDateStr);
+                if (newDate) {
+                    // Update the event
+                    plant.events[eventIndex].date = newDate.toISOString();
+
+                    // Save to localStorage - determine which storage to use
+                    if (this.plants.includes(plant)) {
+                        localStorage.setItem('plants', JSON.stringify(this.plants));
+                    } else { // archived plants
+                        localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
+                    }
+
+                    // Update UI - find the specific events list for this plant and update it
+                    const eventsList = document.getElementById(`events-${plantName}`);
+                    if (eventsList) {
+                        // Replace all events in the list to show complete history
+                        eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
+                    }
+
+                    alert(`Updated date for ${plantName}'s event`);
+                } else {
+                    alert('Invalid date format. Please use YYYY-MM-DD.');
                 }
-        
-                // Update UI - find the specific events list for this plant and update it
-                const eventsList = document.getElementById(`events-${plantName}`);
-                if (eventsList) {
-                    // Replace all events in the list to show complete history
-                    eventsList.innerHTML = this.renderEvents(plant.events, plant.name);
-                }
-        
-                alert(`Updated date for ${plantName}'s event`);
-            } else {
-                alert('Invalid date format. Please use YYYY-MM-DD.');
             }
         } else {
             alert('Invalid event selection');
@@ -477,66 +483,82 @@ class PlantManager {
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
     }
-// Centralized event listener setup using delegation
-setupEventListeners() {
-    // Remove existing event listeners if they exist to prevent duplicates
-    document.removeEventListener('click', this.handleDocumentClick);
 
-    // Set up event delegation for the entire document
-    document.addEventListener('click', this.handleDocumentClick);
+    setupEventListeners() {
+        // Remove existing event listeners if they exist to prevent duplicates
+        document.removeEventListener('click', this.handleDocumentClick);
 
-    // Set up form-based plant addition
-    const addPlantBtn = document.getElementById('addPlantFinalBtn');
-    if (addPlantBtn) {
-        addPlantBtn.addEventListener('click', () => {
-            const nameInput = document.getElementById('plantNameInput');
-            const dateInput = document.getElementById('plantSeedDateInput');
+        // Set up event delegation for the entire document
+        document.addEventListener('click', this.handleDocumentClick);
 
-            const name = nameInput.value.trim();
-            const seedDate = dateInput.value;
+        // Set up form-based plant addition
+        const addPlantBtn = document.getElementById('addPlantFinalBtn');
+        if (addPlantBtn) {
+            addPlantBtn.addEventListener('click', () => {
+                const nameInput = document.getElementById('plantNameInput');
+                const dateInput = document.getElementById('plantSeedDateInput');
 
-            if (!name || !seedDate) {
-                alert('Please enter both plant name and seed date.');
-                return;
-            }
+                const name = nameInput.value.trim();
+                const seedDate = dateInput.value;
 
-            this.addPlant(name, seedDate);
+                if (!name || !seedDate) {
+                    alert('Please enter both plant name and seed date.');
+                    return;
+                }
 
-            // Clear the form
-            nameInput.value = '';
-            dateInput.value = '';
-        });
+                this.addPlant(name, seedDate);
+
+                // Clear the form
+                nameInput.value = '';
+                dateInput.value = '';
+            });
+        }
+
+        // Set up export button event listener
+        const exportBtn = document.getElementById('export-data-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.exportData();
+            });
+        }
+
+        // Set up archive toggle
+        const archiveToggle = document.querySelector('#archive-list h2');
+        if (archiveToggle) {
+            // Remove existing event listeners first by replacing the element
+            const newArchiveToggle = archiveToggle.cloneNode(true);
+            archiveToggle.parentNode.replaceChild(newArchiveToggle, archiveToggle);
+
+            // Add click event listener to the new element
+            newArchiveToggle.addEventListener('click', () => {
+                const archivedPlantsDiv = document.getElementById('archived-plants');
+                if (archivedPlantsDiv.style.display === 'none') {
+                    archivedPlantsDiv.style.display = 'block';
+                } else {
+                    archivedPlantsDiv.style.display = 'none';
+                }
+            });
+        }
     }
-
-    // Set up export button event listener
-    const exportBtn = document.getElementById('export-data-btn');
-    if (exportBtn) {
-        exportBtn.addEventListener('click', () => {
-            this.exportData();
-        });
-    }
-
-    // Set up archive toggle
-    const archiveToggle = document.querySelector('#archive-list h2');
-    if (archiveToggle) {
-        // Remove existing event listeners first by replacing the element
-        const newArchiveToggle = archiveToggle.cloneNode(true);
-        archiveToggle.parentNode.replaceChild(newArchiveToggle, archiveToggle);
-
-        // Add click event listener to the new element
-        newArchiveToggle.addEventListener('click', () => {
-            const archivedPlantsDiv = document.getElementById('archived-plants');
-            if (archivedPlantsDiv.style.display === 'none') {
-                archivedPlantsDiv.style.display = 'block';
-            } else {
-                archivedPlantsDiv.style.display = 'none';
-            }
-        });
-    }
-}
-
 
     handleDocumentClick(e) {
+        // Plant card click - select/deselect plant (only if not clicking on a button or link)
+        if (e.target.closest('.plant-card') && !e.target.closest('button, a')) {
+            const plantName = e.target.closest('.plant-card').querySelector('h3').textContent.trim();
+
+            // If clicking on the same selected plant, deselect it
+            if (this.selectedPlant && this.selectedPlant.name === plantName) {
+                this.selectedPlant = null;
+            } else {
+                this.selectedPlant = { name: plantName };
+            }
+
+            // Update UI to reflect selection changes
+            this.renderPlants();
+            e.stopPropagation();
+            return;
+        }
+
         // Edit event buttons
         if (e.target.classList.contains('edit-event-btn')) {
             const plantName = e.target.dataset.plant;
@@ -631,7 +653,7 @@ setupEventListeners() {
                     setTimeout(() => {
                         // Check if menu would be cut off and adjust position if needed
                         const rect = phaseMenu.getBoundingClientRect();
-                        const cardRect = plantDiv.getBoundingClientRect();
+                        const cardRect = e.target.closest('.plant-card').getBoundingClientRect();
 
                         if (rect.bottom > window.innerHeight) {
                             // Move menu up if it goes beyond viewport
@@ -682,7 +704,6 @@ setupEventListeners() {
     }
 }
 
-
 // 🌿 LocalStorage: Speichern und Laden der Pflanzendaten
 function saveToLocalStorage(data) {
     localStorage.setItem("plantTrackRData", JSON.stringify(data));
@@ -710,15 +731,6 @@ window.addEventListener("DOMContentLoaded", () => {
             if (p.phase) plant.phase = p.phase;
             plantManager.plants.push(plant);
         });
-        plantManager.renderPlantList();
+        plantManager.renderPlants();
     }
 });
-
-
-
-
-
-
-
-
-

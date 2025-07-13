@@ -22,6 +22,7 @@
   }
 </style></head>
 <body class="dark-mode">
+<img id="logo" src="logo_small.jpg" alt="PlantTrackR Logo" class="top-right-logo"/>
 <h1>PlantTrackR</h1>
 <div id="plant-list">
 <h2>My Plants</h2>
@@ -31,6 +32,29 @@
 <h3>🌱 Add New Plant</h3>
 <input id="plantNameInput" placeholder="Plant name" type="text"/>
 <input id="plantSeedDateInput" type="date"/>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date as default value
+    const dateInput = document.getElementById('plantSeedDateInput');
+    if (dateInput) {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+        const day = String(today.getDate()).padStart(2, '0');
+        dateInput.value = `${year}-${month}-${day}`;
+
+        // Update date whenever input gains focus
+        dateInput.addEventListener('focus', function() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+            const currentDay = String(now.getDate()).padStart(2, '0');
+            dateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+        });
+    }
+});
+</script>
 <button id="addPlantFinalBtn"><span>🌱</span> Add Plant</button>
 </div>
 <div id="calendar">
