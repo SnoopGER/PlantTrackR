@@ -176,9 +176,10 @@ h1 {
 /* Phase menu styles */
 .phase-menu {
     position: absolute;
-    top: 100%;
+    top: auto; /* Changed from 100% to allow downward expansion */
+    bottom: 100%; /* Position relative to the bottom of the button */
     left: 0;
-    margin-top: 4px; /* Reduced from 8px */
+    margin-bottom: 4px; /* Reduced from 8px */
     background-color: white;
     border: 1px solid #ddd;
     border-radius: 6px;

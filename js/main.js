@@ -697,24 +697,27 @@ class PlantManager {
                 const isVisible = phaseMenu.style.display === 'block';
                 phaseMenu.style.display = isVisible ? 'none' : 'block';
 
-                // Prevent menu from being cut off by card boundaries
+                // Prevent menu from being cut off by card boundaries or viewport
                 if (!isVisible) {
                     setTimeout(() => {
                         // Check if menu would be cut off and adjust position if needed
                         const rect = phaseMenu.getBoundingClientRect();
                         const cardRect = e.target.closest('.plant-card').getBoundingClientRect();
 
-                        if (rect.bottom > window.innerHeight) {
-                            // Move menu up if it goes beyond viewport
-                            phaseMenu.style.top = `-${Math.max(0, rect.bottom - window.innerHeight + 10)}px`;
+                        if (rect.bottom > window.innerHeight || rect.top < 0) {
+                            // Move menu up if it goes beyond viewport boundaries
+                            phaseMenu.style.bottom = 'auto';
+                            phaseMenu.style.top = `${Math.max(0, -rect.top + 10)}px`;
                         } else if (rect.bottom > cardRect.bottom) {
                             // Move menu up if it goes beyond card boundaries
-                            phaseMenu.style.top = `-${Math.max(0, rect.bottom - cardRect.bottom + 5)}px`;
+                            phaseMenu.style.bottom = 'auto';
+                            phaseMenu.style.top = `${Math.max(0, rect.bottom - cardRect.bottom + 5)}px`;
                         }
                     }, 10);
                 } else {
                     // Reset position when closing
-                    phaseMenu.style.top = '100%';
+                    phaseMenu.style.top = 'auto';
+                    phaseMenu.style.bottom = '100%';
                 }
             }
 
