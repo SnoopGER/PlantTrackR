@@ -150,6 +150,7 @@ class PlantManager {
         this.plants = [];
         this.archivedPlants = [];
         this.selectedPlants = new Set(); // Track multiple selected plants using a Set of plant IDs
+        this.expandedEvents = {}; // Track which event sections are expanded: {plantId: true/false}
 
         // Initialize storage and load data only once
         this.initStorage();
@@ -183,6 +184,10 @@ class PlantManager {
         if (!localStorage.getItem('archivedPlants')) {
             localStorage.setItem('archivedPlants', JSON.stringify([]));
         }
+        // Initialize expandedEvents storage if needed
+        if (!localStorage.getItem('expandedEvents')) {
+            localStorage.setItem('expandedEvents', JSON.stringify({}));
+        }
     }
 
     /**
@@ -212,6 +217,17 @@ class PlantManager {
                         }
                     }).filter(p => p !== null);
                     console.log('Parsed plants:', this.plants);
+
+                    // Load expanded events state from localStorage if available
+                    const storedExpandedEvents = localStorage.getItem('expandedEvents');
+                    if (storedExpandedEvents) {
+                        try {
+                            Object.assign(this.expandedEvents, JSON.parse(storedExpandedEvents));
+                        } catch (parseError) {
+                            console.error('Error parsing expanded events state:', parseError);
+                        }
+                    }
+
                     this.renderPlants();
                 } catch (parseError) {
                     console.error('Error parsing plants from localStorage:', parseError);
@@ -262,10 +278,14 @@ class PlantManager {
          }
 
          const newPlant = new Plant(name, seedDate); // ID is automatically generated
+         // Initialize expanded state for the new plant (default to collapsed)
+         this.expandedEvents[newPlant.id] = false;
+
          this.plants.push(newPlant);
 
          // Save to localStorage
          localStorage.setItem('plants', JSON.stringify(this.plants));
+         localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
 
          // Update UI
          this.renderPlants();
@@ -326,7 +346,7 @@ class PlantManager {
          if (eventCount > 1) {
              const deselectAllBtn = document.createElement('button');
              deselectAllBtn.id = 'deselect-all-btn';
-             deselectAllBtn.innerHTML = '<span>🗕</span> Deselect All';
+             deselectAllBtn.innerHTML = 'Deselect All';
              deselectAllBtn.style.position = 'fixed';
              deselectAllBtn.style.top = '50%';
              deselectAllBtn.style.left = '50%';
@@ -350,7 +370,7 @@ class PlantManager {
              countdownText.style.fontSize = '12px';
              countdownText.style.color = 'white';
              countdownText.style.marginTop = '8px';
-             countdownText.textContent = 'This button will disappear in 3 seconds...';
+             countdownText.textContent = 'This button will disappear in 6 seconds...';
 
              deselectAllBtn.appendChild(countdownText);
 
@@ -505,11 +525,17 @@ class PlantManager {
             }
         });
 
-        // Close events sections when clicking outside
+        // Close events sections when clicking outside and update expanded state
         document.querySelectorAll('.events-dropdown').forEach(section => {
             const toggleBtn = section.querySelector('.toggle-events-btn');
             if (toggleBtn && !section.contains(event.target) && !event.target.classList.contains('toggle-events-btn') &&
                 !event.target.classList.contains('delete-event-btn') && !event.target.closest('.events-list')) {
+                // Update expanded state when closing
+                const plantId = section.closest('.plant-card').dataset.plantId;
+                if (plantId) {
+                    this.expandedEvents[plantId] = false;
+                    localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+                }
                 section.style.display = 'none';
             }
         });
@@ -534,6 +560,10 @@ class PlantManager {
             if (!Array.isArray(importedPlants)) {
                 throw new Error('Invalid plant data format');
             }
+
+            // Reset expanded events state before importing
+            this.expandedEvents = {};
+
             this.plants = importedPlants.map(p => {
                 const plant = new Plant(p.name, p.seedDate, p.id);
                 if (p.events && Array.isArray(p.events)) {
@@ -544,6 +574,13 @@ class PlantManager {
                 }
                 return plant;
             });
+
+            // Initialize expanded state for all imported plants (default to collapsed)
+            this.plants.forEach(plant => {
+                this.expandedEvents[plant.id] = false;
+            });
+            localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+
             localStorage.setItem('plants', jsonStr);
             this.renderPlants();
             return true;
@@ -561,6 +598,10 @@ class PlantManager {
     archivePlant(index) {
         if (index >= 0 && index < this.plants.length) {
             const archivedPlant = this.plants.splice(index, 1)[0];
+            // Remove the expanded state for this plant when it's archived
+            delete this.expandedEvents[archivedPlant.id];
+            localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+
             this.archivedPlants.push(archivedPlant);
             localStorage.setItem('plants', JSON.stringify(this.plants));
             localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
@@ -579,6 +620,10 @@ class PlantManager {
     unarchivePlant(index) {
         if (index >= 0 && index < this.archivedPlants.length) {
             const unarchivedPlant = this.archivedPlants.splice(index, 1)[0];
+            // Initialize expanded state for the unarchived plant (default to collapsed)
+            this.expandedEvents[unarchivedPlant.id] = false;
+            localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+
             this.plants.push(unarchivedPlant);
             localStorage.setItem('plants', JSON.stringify(this.plants));
             localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
@@ -678,7 +723,7 @@ class PlantManager {
                             // Save updated plant data to localStorage
                             localStorage.setItem('plants', JSON.stringify(this.plants));
 
-                            this.renderPlants(); // Update UI to show new event
+                            this.renderPlants(true); // Update UI to show new event while preserving expanded state
                             alert(`Added ${eventType} event for ${plant.name}`);
                         }
                     } else {
@@ -688,7 +733,7 @@ class PlantManager {
                         // Save updated plant data to localStorage
                         localStorage.setItem('plants', JSON.stringify(this.plants));
 
-                        this.renderPlants(); // Update UI to show new event
+                        this.renderPlants(true); // Update UI to show new event while preserving expanded state
                         alert(`Added ${eventType} event for ${plant.name}`);
                     }
                 }
@@ -701,9 +746,13 @@ class PlantManager {
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (confirm(`Are you sure you want to delete ${plant.name}?`)) {
+                    // Remove the expanded state for this plant when it's deleted
+                    delete this.expandedEvents[plant.id];
+                    localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+
                     this.plants.splice(index, 1);
                     localStorage.setItem('plants', JSON.stringify(this.plants));
-                    this.renderPlants(); // Update UI to remove deleted plant
+                    this.renderPlants(true); // Update UI to remove deleted event while preserving expanded state
                 }
             });
 
@@ -719,7 +768,7 @@ class PlantManager {
                 phaseOption.addEventListener('click', (e) => {
                     e.stopPropagation();
                     plant.updatePhase(phase);
-                    this.renderPlants(); // Update UI to show new phase
+                    this.renderPlants(true); // Update UI to show edited event while preserving expanded state
                 });
                 phaseMenu.appendChild(phaseOption);
             });
@@ -789,7 +838,7 @@ class PlantManager {
                         // Save updated plant data to localStorage
                         localStorage.setItem('plants', JSON.stringify(this.plants));
 
-                        this.renderPlants(); // Update UI to show edited event
+                        this.renderPlants(true); // Update UI to show edited event while preserving expanded state
                     });
 
                     // Delete event button functionality
@@ -802,7 +851,7 @@ class PlantManager {
                             // Save updated plant data to localStorage
                             localStorage.setItem('plants', JSON.stringify(this.plants));
 
-                            this.renderPlants(); // Update UI to remove deleted event
+                            this.renderPlants(true); // Update UI to remove deleted event while preserving expanded state
                         }
                     });
 
@@ -818,10 +867,22 @@ class PlantManager {
             plantCard.appendChild(toggleEventsBtn);
             plantCard.appendChild(eventsSection);
 
-            // Add click event to toggle events display
+            // Set initial display state based on expandedEvents tracking
+            if (this.expandedEvents[plant.id]) {
+                eventsSection.style.display = 'block';
+            } else {
+                eventsSection.style.display = 'none';
+            }
+
+            // Add click event to toggle events display and update tracking
             toggleEventsBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                eventsSection.style.display = eventsSection.style.display === 'none' ? 'block' : 'none';
+                const isExpanded = eventsSection.style.display === 'block';
+                this.expandedEvents[plant.id] = !isExpanded;
+                eventsSection.style.display = !isExpanded ? 'block' : 'none';
+
+                // Save expanded state to localStorage
+                localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
             });
 
             // Add phase menu to card
