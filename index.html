@@ -1,93 +1,109 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>PlantTrackR</title>
-<link href="css/styles.css" rel="stylesheet"/>
-<style>
-  body.dark-mode {
-    background-color: #121212;
-    color: #ddd;
-  }
-  body.dark-mode button {
-    background-color: #333;
-    color: #fff;
-  }
-  body.dark-mode input {
-    background-color: #222;
-    color: #fff;
-    border: 1px solid #555;
-  }
-</style></head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>PlantTrackR</title>
+    <link href="css/styles.css" rel="stylesheet"/>
+    <style>
+        /* Dark mode styles that override some base styles */
+        body.dark-mode {
+            background-color: #121212;
+            color: #ddd;
+        }
+        body.dark-mode button {
+            background-color: #333;
+            color: #fff;
+        }
+        body.dark-mode input {
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #555;
+        }
+    </style>
+</head>
 <body class="dark-mode">
-<img id="logo" src="logo_small.jpg" alt="PlantTrackR Logo" class="top-right-logo"/>
-<h1>PlantTrackR</h1>
-<div id="plant-list">
+    <!-- Logo in top right corner -->
+    <img id="logo" src="logo_small.jpg" alt="PlantTrackR Logo" class="top-right-logo"/>
 
-<!-- Plant items will be added here -->
-</div>
-<div id="add-plant-form">
-<h3>🌱 Add New Plant</h3>
-<input id="plantNameInput" placeholder="Plant name" type="text"/>
-<input id="plantSeedDateInput" type="date"/>
+    <!-- Main title of the application -->
+    <h1>PlantTrackR</h1>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Set current date as default value
-    const dateInput = document.getElementById('plantSeedDateInput');
-    if (dateInput) {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
-        const day = String(today.getDate()).padStart(2, '0');
-        dateInput.value = `${year}-${month}-${day}`;
+    <!-- Plant list container - plant cards will be inserted here by JavaScript -->
+    <div id="plant-list">
+        <!-- Plant items will be added here -->
+    </div>
 
-        // Update date whenever input gains focus
-        dateInput.addEventListener('focus', function() {
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
-            const currentDay = String(now.getDate()).padStart(2, '0');
-            dateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+    <!-- Add plant form -->
+    <div id="add-plant-form">
+        <h3>🌱 Add New Plant</h3>
+        <input id="plantNameInput" placeholder="Plant name" type="text"/>
+        <input id="plantSeedDateInput" type="date"/>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Set current date as default value
+                const dateInput = document.getElementById('plantSeedDateInput');
+                if (dateInput) {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+                    const day = String(today.getDate()).padStart(2, '0');
+                    dateInput.value = `${year}-${month}-${day}`;
+
+                    // Update date whenever input gains focus
+                    dateInput.addEventListener('focus', function() {
+                        const now = new Date();
+                        const currentYear = now.getFullYear();
+                        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+                        const currentDay = String(now.getDate()).padStart(2, '0');
+                        dateInput.value = `${currentYear}-${currentMonth}-${currentDay}`;
+                    });
+                }
+            });
+        </script>
+        <button id="addPlantFinalBtn"><span>🌱</span> Add Plant</button>
+    </div>
+
+    <!-- Calendar component -->
+    <div id="calendar">
+        <h2>Calendar</h2>
+        <!-- Calendar will be displayed here -->
+    </div>
+
+    <!-- Action buttons -->
+    <div id="actions">
+        <h2>Actions</h2>
+        <button id="export-data-btn">Export Data</button>
+    </div>
+
+    <!-- Archived plants section -->
+    <div class="archive-section" id="archive-list">
+        <h2>Archived Plants ▼</h2>
+        <div id="archived-plants" style="display: none;">
+            <!-- Archived plants will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Environment data inputs (German comments) -->
+    <div id="environmentData" style="margin-top: 20px;">
+        <h3>🌡️ Umgebungsdaten</h3>
+        <p>Temperatur: <input id="tempInput" placeholder="°C" style="width:60px;" type="number"/>
+            Luftfeuchte: <input id="humidityInput" placeholder="%" style="width:60px;" type="number"/>
+            pH: <input id="phInput" placeholder="pH" step="0.1" style="width:60px;" type="number"/></p>
+    </div>
+
+    <!-- Dark mode toggle -->
+    <div style="margin-top:20px;">
+        <button id="toggleDarkMode">🌙 Dark Mode umschalten</button>
+    </div>
+    <script>
+        document.getElementById("toggleDarkMode").addEventListener("click", function() {
+            document.body.classList.toggle("dark-mode");
         });
-    }
-});
-</script>
-<button id="addPlantFinalBtn"><span>🌱</span> Add Plant</button>
-</div>
-<div id="calendar">
-<h2>Calendar</h2>
-<!-- Calendar will be displayed here -->
-</div>
-<div id="actions">
-<h2>Actions</h2>
+    </script>
 
-<button id="export-data-btn">Export Data</button>
-</div>
-<div class="archive-section" id="archive-list">
-<h2>Archived Plants ▼</h2>
-<div id="archived-plants" style="display: none;">
-<!-- Archived plants will be displayed here -->
-</div>
-</div>
-<!-- 🌿 Neues Datumseingabefeld -->
-<!-- 🌱 Umgebungsdaten -->
-<div id="environmentData" style="margin-top: 20px;">
-<h3>🌡️ Umgebungsdaten</h3>
-<p>Temperatur: <input id="tempInput" placeholder="°C" style="width:60px;" type="number"/>
-     Luftfeuchte: <input id="humidityInput" placeholder="%" style="width:60px;" type="number"/>
-     pH: <input id="phInput" placeholder="pH" step="0.1" style="width:60px;" type="number"/></p>
-</div>
-<!-- 🌘 Dark Mode Umschalter -->
-<div style="margin-top:20px;">
-<button id="toggleDarkMode">🌙 Dark Mode umschalten</button>
-</div>
-<script>
-document.getElementById("toggleDarkMode").addEventListener("click", function() {
-    document.body.classList.toggle("dark-mode");
-});
-</script>
-<script src="js/calendar.js"></script><script src="js/main.js"></script></body>
+    <!-- Main JavaScript files -->
+    <script src="js/calendar.js"></script><script src="js/main.js"></script>
+</body>
 </html>

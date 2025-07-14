@@ -1,3 +1,15 @@
+/**
+ * Plant Manager App - Stylesheet
+ *
+ * This file contains the CSS styles for the Plant Manager application.
+ * It includes:
+ * - Base styles for layout and typography
+ * - Calendar component styling
+ * - Plant card styling (main content elements)
+ * - Dark mode styles
+ * - Responsive design adjustments
+ */
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 20px;
@@ -423,6 +435,14 @@ body.dark-mode .status-curing {
     margin-right: 5px;
 }
 
+/* Ensure only one plant can be selected at a time */
+.plant-card .card-header h3::before {
+    display: none;
+}
+
+.plant-card.selected .card-header h3::before {
+    display: block;
+}
 
 /* Mosaic grid layout for plant cards */
 #plant-list {

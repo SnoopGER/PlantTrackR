@@ -1,9 +1,12 @@
+/**
+ * Calendar Class - Handles rendering and interaction with the calendar
+ */
 class Calendar {
     constructor() {
         if (Calendar.instance) return Calendar.instance;
 
         this.currentDate = new Date();
-        this.selectedPlant = null;
+        this.selectedPlant = null; // Will store plant ID instead of name
         Calendar.instance = this;
     }
 
@@ -12,11 +15,9 @@ class Calendar {
         return Calendar.instance;
     }
 
-    static getInstance() {
-        if (!Calendar.instance) Calendar.instance = new Calendar();
-        return Calendar.instance;
-    }
-
+    /**
+     * Render the calendar UI for the current month
+     */
     renderCalendar() {
         try {
             const calendarDiv = document.getElementById('calendar');
@@ -117,45 +118,75 @@ class Calendar {
         }
     }
 
+    /**
+     * Handle day selection in the calendar
+     * @param {number} day - Day of month to select
+     */
     selectDay(day) {
         const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
 
         // Get the PlantManager instance
         const plantManager = PlantManager.getInstance();
 
-        if (plantManager.selectedPlant) {
+        // Find the selected plant by ID
+        const selectedPlant = plantManager.plants.find(p => p.id === plantManager.selectedPlant);
+        if (selectedPlant) {
             const eventType = prompt('Enter event type (water, fertilizer, etc.):');
             if (eventType) {
-                plantManager.addEventToPlant(plantManager.selectedPlant.name, eventType, date.toISOString());
+                plantManager.addEventToPlant(selectedPlant.name, eventType, date.toISOString(), selectedPlant.id);
                 this.renderCalendar();
-                alert(`Added ${eventType} event for ${plantManager.selectedPlant.name} on ${date.toDateString()}`);
+                alert(`Added ${eventType} event for ${selectedPlant.name} on ${date.toDateString()}`);
             }
         } else {
+            // If no plant is selected, prompt for plant name and find its ID
             const plantName = prompt('Select a plant (enter name):');
             if (plantName) {
-                // Set the selected plant in PlantManager
-                plantManager.selectedPlant = { name: plantName };
-                plantManager.renderPlants(); // Update UI to show selection
-                alert(`Selected plant: ${plantName}. Click a day to add an event.`);
+                const plant = plantManager.plants.find(p => p.name === plantName);
+                if (plant) {
+                    // Set the selected plant using its ID
+                    plantManager.selectedPlant = plant.id;
+                    plantManager.renderPlants(); // Update UI to show selection
+                    alert(`Selected plant: ${plantName}. Click a day to add an event.`);
+                } else {
+                    alert(`Plant "${plantName}" not found.`);
+                }
             }
         }
     }
 
-    addEventToPlant(plantName) {
-        // Get the PlantManager instance to update UI and track selection
-        const plantManager = PlantManager.getInstance();
+    /**
+     * Set the currently selected plant for adding events
+     * @param {string} plantName - Name of the plant to select
+     * @param {string} [plantId] - Optional plant ID to prioritize selection
+     */
+     addEventToPlant(plantName, plantId) {
+         // Get the PlantManager instance to update UI and track selection
+         const plantManager = PlantManager.getInstance();
 
-        if (!plantManager.selectedPlant || plantManager.selectedPlant.name !== plantName) {
-            // Update the selected plant
-            plantManager.selectedPlant = { name: plantName };
+         let plant;
+         if (plantId) {
+             // If plant ID is provided, prioritize finding by ID
+             plant = plantManager.plants.find(p => p.id === plantId);
+         } else {
+             // Otherwise, find by name
+             plant = plantManager.plants.find(p => p.name === plantName);
+         }
 
-            // Update the plant list UI to show the selection
-            plantManager.renderPlants();
+         if (plant) {
+             if (!plantManager.selectedPlant || plantManager.selectedPlant !== plant.id) {
+                 // Update the selected plant using its ID
+                 plantManager.selectedPlant = plant.id;
 
-            alert(`Selected plant: ${plantName}. Click a day in the calendar to add an event.`);
-        } else {
-            // Already selected, do nothing
-            alert(`You already have ${plantName} selected. Click a day in the calendar to add an event.`);
-        }
-    }
+                 // Update the plant list UI to show the selection
+                 plantManager.renderPlants();
+
+                 alert(`Selected plant: ${plantName}. Click a day in the calendar to add an event.`);
+             } else {
+                 // Already selected, do nothing
+                 alert(`You already have ${plantName} selected. Click a day in the calendar to add an event.`);
+             }
+         } else {
+             alert(`Plant "${plantName}" not found.`);
+         }
+     }
 }
