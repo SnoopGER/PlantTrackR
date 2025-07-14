@@ -1,936 +1,879 @@
-  /**
-   * Plant Manager App - Main JavaScript File
-   *
-   * This file contains the core logic for the Plant Manager application.
-   * It includes classes and functions for managing plants, handling events,
-   * and interacting with localStorage.
-   *
-   * Features:
-   * - Plant tracking with name, seed date, and growth phases
-   * - Event management (watering, fertilizing, etc.)
-   * - LocalStorage persistence
-   * - Archive functionality
-   * - Data export/import
-   */
-  // Plant phases - used for both default and available phases
-  const PLANT_PHASES = ['Seedling', 'Vegetative', 'Flowering', 'Drying', 'Curing', 'Mutter'];
-
-  /**
-   * Generate a unique identifier
-   * Uses cryptographic random values for better uniqueness guarantees
-   * @returns {string} Unique ID string (UUID v4 format)
-   */
-  function generateUUID() {
-      if (crypto && crypto.getRandomValues) {
-          // Use cryptographic random values for better security
-          const randomArray = new Uint8Array(16);
-          crypto.getRandomValues(randomArray);
-          // Convert to UUID version 4 format
-          return (
-              (randomArray[0] & 0x3f | 0x40).toString(16) +
-              (randomArray[1] & 0x0f | 0x40).toString(16) +
-              (randomArray[2] & 0x0f | 0x40).toString(16) +
-              (randomArray[3] & 0x0f | 0x40).toString(16) +
-              '-' +
-              (randomArray[4] & 0x0f | 0x40).toString(16) +
-              (randomArray[5] & 0x3f | 0x40).toString(16) +
-              '-' +
-              (randomArray[6] & 0x0f | 0x40).toString(16) +
-              (randomArray[7] & 0x3f | 0x40).toString(16) +
-              '-' +
-              (randomArray[8] & 0x3f | 0x40).toString(16) +
-              (randomArray[9] & 0x0f | 0x40).toString(16) +
-              '-' +
-              ((randomArray[10] & 0x3f | 0x40).toString(16) +
-              (randomArray[11] & 0x0f | 0x40).toString(16) +
-              (randomArray[12] & 0x3f | 0x40).toString(16) +
-              (randomArray[13] & 0xff).toString(16))
-          );
-      } else {
-          // Fallback to Math.random() for older environments
-          return 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxx'.replace(/x/g, y => {
-              const r = Math.random() * 16 | 0;
-              return (y === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-          });
-      }
-  }
-
-  // UUID generation is now cryptographically secure using crypto.getRandomValues()
-
-  document.addEventListener('DOMContentLoaded', function() {
-      const plantManager = PlantManager.getInstance();
-      plantManager.setupEventListeners();
-
-      const calendar = Calendar.getInstance();
-      calendar.renderCalendar();
-
-      // Set up event delegation for calendar day clicks
-      document.addEventListener('click', function(e) {
-          if (e.target.classList.contains('day') && !e.target.classList.contains('empty')) {
-              const day = e.target.dataset.day;
-              if (day) {
-                  calendar.selectDay(parseInt(day, 10));
-              }
-          }
-      });
-  });
-
-  /**
-   * Class representing a plant
-   */
-  class Plant {
-      constructor(name, seedDate, id) {
-          this.name = name;
-          this.seedDate = seedDate;
-          this.events = [];
-          this.phase = PLANT_PHASES[0]; // Default to first phase
-          this.id = id || generateUUID(); // Assign ID, generate new one if not provided
-      }
-
-      /**
-       * Add an event to the plant
-       * @param {string} eventType - Type of event (e.g., "Watered", "Fertilized")
-       * @param {string} date - Date of the event in YYYY-MM-DD format
-       * @returns {Object} The event object that was added
-       */
-      addEvent(eventType, date) {
-          const event = { type: eventType, date };
-          this.events.push(event);
-          return event;
-      }
-
-      /**
-       * Remove an event from the plant
-       * @param {number} index - Index of the event to remove
-       * @returns {boolean} True if event was removed, false otherwise
-       */
-      removeEvent(index) {
-          if (index >= 0 && index < this.events.length) {
-              this.events.splice(index, 1);
-              return true;
-          }
-          return false;
-      }
-
-      /**
-       * Update the growth phase of the plant
-       * @param {string} newPhase - New growth phase (e.g., "Vegetative", "Flowering")
-       */
-      updatePhase(newPhase) {
-          this.phase = newPhase;
-      }
-  }
-
-  /**
-   * Singleton class managing all plant operations
-   */
-  class PlantManager {
-      constructor() {
-          if (PlantManager.instance) {
-              return PlantManager.instance;
-          }
-
-          this.plants = [];
-          this.archivedPlants = [];
-          this.selectedPlant = null; // Track the currently selected plant (will store plant ID)
-
-          // Initialize storage and load data only once
-          this.initStorage();
-          this.loadPlants();
-          this.loadArchivedPlants();
-
-          // Store bound functions for proper cleanup
-          this.handleDocumentClick = this.handleDocumentClick.bind(this);
-
-          // Set the instance
-          PlantManager.instance = this;
-
-          return this;
-      }
-
-      static getInstance() {
-          if (!PlantManager.instance) {
-              PlantManager.instance = new PlantManager();
-          }
-          return PlantManager.instance;
-      }
-
-      /**
-       * Initialize localStorage if needed
-       */
-      initStorage() {
-          // Initialize localStorage if needed
-          if (!localStorage.getItem('plants')) {
-              localStorage.setItem('plants', JSON.stringify([]));
-          }
-          if (!localStorage.getItem('archivedPlants')) {
-              localStorage.setItem('archivedPlants', JSON.stringify([]));
-          }
-      }
-
-      /**
-       * Load plants from localStorage and render them
-       */
-      loadPlants() {
-          const storedPlants = localStorage.getItem('plants');
-          // console.log('Loaded plants from storage:', storedPlants);
-          if (storedPlants) {
-              this.plants = JSON.parse(storedPlants).map(p => {
-                  const plant = new Plant(p.name, p.seedDate, p.id); // Pass ID if available
-                  // Ensure events are properly deserialized
-                  if (p.events && Array.isArray(p.events)) {
-                      plant.events = p.events;
-                  }
-                  // Set phase if available
-                  if (p.phase) {
-                      plant.phase = p.phase;
-                  }
-                  return plant;
-              });
-              // console.log('Parsed plants:', this.plants);
-              this.renderPlants();
-          }
-      }
-
-      /**
-       * Load archived plants from localStorage and render them
-       */
-      loadArchivedPlants() {
-          const storedArchived = localStorage.getItem('archivedPlants');
-          if (storedArchived) {
-              this.archivedPlants = JSON.parse(storedArchived).map(p => {
-                  const plant = new Plant(p.name, p.seedDate, p.id); // Pass ID if available
-                  // Ensure events are properly deserialized
-                  if (p.events && Array.isArray(p.events)) {
-                      plant.events = p.events;
-                  }
-                  return plant;
-              });
-              this.renderArchivedPlants();
-          }
-      }
-
-      /**
-       * Add a new plant to the collection
-       * @param {string} name - Name of the plant
-       * @param {string} seedDate - Seed date in YYYY-MM-DD format
-       * @returns {boolean} True if plant was added, false otherwise
-       */
-      addPlant(name, seedDate) {
-          if (!name || !seedDate) {
-              alert('Please provide both plant name and seed date.');
-              return false;
-          }
-
-          // Validate the date format
-          const parsedDate = this.parseDate(seedDate);
-          if (!parsedDate) {
-              alert('Invalid date format. Please use YYYY-MM-DD.');
-              return false;
-          }
-
-          const newPlant = new Plant(name, seedDate); // ID is automatically generated
-          this.plants.push(newPlant);
-
-          // Save to localStorage
-          localStorage.setItem('plants', JSON.stringify(this.plants));
-
-          // Update UI
-          this.renderPlants();
-
-          return true;
-      }
-
-      /**
-       * Render all plants in the UI
-       */
-      renderPlants() {
-          const plantList = document.getElementById('plant-list');
-          plantList.innerHTML = ''; // Clear existing content first
-
-          this.plants.forEach(plant => {
-              // console.log(`Rendering plant ${plant.name} with events:`, plant.events);
-              const plantDiv = document.createElement('div');
-              // Add 'selected' class if this is the selected plant
-              plantDiv.className = `plant-card${this.selectedPlant && this.selectedPlant === plant.id ? ' selected' : ''}`; // Use ID for selection
-
-              // Create card header
-              const cardHeader = document.createElement('div');
-              cardHeader.className = 'card-header';
-              const headerTitle = document.createElement('h3');
-              headerTitle.innerHTML = `<span class="plant-id">[${plant.id}]</span> <span class="plant-name">${plant.name}</span>`;
-              headerTitle.dataset.id = plant.id; // Add ID to header for easier access
-              const headerSubtitle = document.createElement('p');
-              headerSubtitle.textContent = `Seeded on: ${plant.seedDate}`;
-              cardHeader.appendChild(headerTitle);
-              cardHeader.appendChild(headerSubtitle);
-
-              // Create phase control
-              const phaseControl = document.createElement('div');
-              phaseControl.className = 'phase-control';
-              const phaseLabel = document.createElement('label');
-              phaseLabel.setAttribute('for', `phase-${plant.id}`);
-              phaseLabel.textContent = 'Phase:';
-              const phaseButton = document.createElement('button');
-              phaseButton.className = `phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}`;
-              phaseButton.dataset.id = plant.id;
-              phaseButton.textContent = plant.phase;
-
-              // Create phase menu
-              const phaseMenu = document.createElement('div');
-              phaseMenu.className = 'phase-menu';
-              phaseMenu.id = `phase-menu-${plant.id}`;
-              phaseMenu.style.display = 'none';
-
-              const phases = PLANT_PHASES;
-              phases.forEach(phase => {
-                  const option = document.createElement('button');
-                  option.className = `phase-option phase-${phase.toLowerCase().replace(' ', '-')}`;
-                  option.dataset.phase = phase;
-                  option.dataset.id = plant.id;
-                  option.textContent = phase;
-                  phaseMenu.appendChild(option);
-              });
-
-              phaseControl.appendChild(phaseLabel);
-              phaseControl.appendChild(phaseButton);
-              phaseControl.appendChild(phaseMenu);
-
-              // Create action buttons
-              const cardActions = document.createElement('div');
-              cardActions.className = 'card-actions';
-
-              const addEventBtn = document.createElement('button');
-              addEventBtn.className = 'add-event-btn';
-              addEventBtn.dataset.id = plant.id;
-              addEventBtn.title = this.selectedPlant && this.selectedPlant === plant.id ? 'Add event to this plant' : 'Select this plant by clicking its card (➡️)';
-              addEventBtn.innerHTML = '<span>📅</span> Add Event';
-
-              const deleteBtn = document.createElement('button');
-              deleteBtn.className = 'delete-btn';
-              deleteBtn.dataset.id = plant.id;
-              deleteBtn.innerHTML = '<span>🗑️</span> Delete';
-
-              const archiveBtn = document.createElement('button');
-              archiveBtn.className = 'archive-btn';
-              archiveBtn.dataset.id = plant.id;
-              archiveBtn.innerHTML = '<span>✏️</span> Archive';
-
-              cardActions.appendChild(addEventBtn);
-              cardActions.appendChild(deleteBtn);
-              cardActions.appendChild(archiveBtn);
-
-              // Create events dropdown
-              const eventsDropdown = document.createElement('div');
-              eventsDropdown.className = 'events-dropdown';
-
-              const toggleEventsBtn = document.createElement('button');
-              toggleEventsBtn.className = 'toggle-events-btn';
-              toggleEventsBtn.dataset.id = plant.id;
-              toggleEventsBtn.innerHTML = '<span>📋</span> View Events ▼';
-
-              const eventsList = document.createElement('div');
-              eventsList.className = 'events-list';
-              eventsList.id = `events-${plant.id}`;
-              eventsList.style.display = 'none';
-              eventsList.innerHTML = this.renderEvents(plant.events, plant.id);
-
-              eventsDropdown.appendChild(toggleEventsBtn);
-              eventsDropdown.appendChild(eventsList);
-
-              // Append all elements to the card
-              plantDiv.appendChild(cardHeader);
-              plantDiv.appendChild(phaseControl);
-              plantDiv.appendChild(cardActions);
-              plantDiv.appendChild(eventsDropdown);
-              plantList.appendChild(plantDiv);
-          });
-
-          // Note: All event listeners are now handled through delegation in setupEventListeners()
-      }
-
-      /**
-       * Render archived plants in the UI
-       */
-      renderArchivedPlants() {
-          const archiveList = document.getElementById('archived-plants');
-          if (archiveList) {
-              archiveList.innerHTML = '';
-
-              this.archivedPlants.forEach(plant => {
-                  const plantDiv = document.createElement('div');
-                  plantDiv.className = 'archived-plant';
-                  plantDiv.innerHTML = `
-                      <h3 data-id="${plant.id}">${plant.name}</h3>
-                      <p>Seeded on: ${plant.seedDate}
-
-                      <!-- Delete archived plant button -->
-                      <button class="delete-archived-btn" data-id="${plant.id}">Delete</button>
-
-                      <!-- Events list -->
-                      <div class="events-list">
-                          ${this.renderEvents(plant.events, plant.id)}
-                      </div>
-                  `;
-                  archiveList.appendChild(plantDiv);
-              });
-          }
-      }
-
-      /**
-       * Render events for a plant
-       * @param {Array} events - Array of event objects
-       * @param {string} plantName - Name of the plant (for data attributes)
-       * @returns {string} HTML string representing the events
-       */
-      renderEvents(events, plantId) {
-          // console.log('Rendering events:', events);
-          return events.map((event, index) => `
-              <div class="event">
-                  <strong>${event.type}</strong> on ${new Date(event.date).toLocaleDateString()}
-                  <button class="edit-event-btn" data-plant="${plantId}" data-index="${index}">Edit</button>
-                  <button class="delete-event-btn" data-plant="${plantId}" data-index="${index}">X</button>
-              </div>
-          `).join('');
-      }
-
-      /**
-       * Delete a plant from the collection
-       * @param {string} name - Name of the plant to delete
-       */
-      deletePlant(plantId) {
-          // Find the plant by ID
-          const plant = this.plants.find(p => p.id === plantId);
-          if (plant) {
-              const plantIndex = this.plants.findIndex(p => p.id === plantId);
-              const deletedPlant = this.plants.splice(plantIndex, 1)[0];
-              localStorage.setItem('plants', JSON.stringify(this.plants));
-              this.renderPlants();
-              alert(`${deletedPlant.name} has been deleted`);
-          }
-      }
-
-      /**
-       * Update a plant's growth phase
-       * @param {string} plantName - Name of the plant
-       * @param {string} newPhase - New growth phase
-       */
-      updatePlantPhase(plantId, newPhase) {
-          const plant = this.plants.find(p => p.id === plantId);
-          if (plant) {
-              plant.updatePhase(newPhase);
-
-              // Save to localStorage
-              localStorage.setItem('plants', JSON.stringify(this.plants));
-
-              // Re-render the plants to update all UI elements
-              this.renderPlants();
-          }
-      }
-
-      /**
-       * Remove an event from a plant
-       * @param {string} plantName - Name of the plant
-       * @param {number} eventIndex - Index of the event to remove
-       */
-      removeEvent(plantId, eventIndex) {
-          let plant = this.plants.find(p => p.id === plantId);
-
-          // If not found in active plants, check archived plants
-          if (!plant) {
-              plant = this.archivedPlants.find(p => p.id === plantId);
-          }
-
-          if (plant && plant.removeEvent(eventIndex)) {
-              // Save to localStorage - determine which storage to use
-              if (this.plants.includes(plant)) {
-                  localStorage.setItem('plants', JSON.stringify(this.plants));
-              } else { // archived plants
-                  localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-              }
-
-              // Update UI - find the specific events list for this plant and update it
-              const eventsList = document.getElementById(`events-${plant.id}`);
-              if (eventsList) {
-                  // Replace all events in the list to show complete history
-                  eventsList.innerHTML = this.renderEvents(plant.events, plant.id);
-              }
-
-              // Note: All event listeners are now handled through delegation in setupEventListeners()
-          }
-      }
-
-      /**
-       * Archive a plant by moving it to archivedPlants
-       * @param {string} name - Name of the plant to archive
-       */
-      archivePlant(plantId) {
-          const plant = this.plants.find(p => p.id === plantId);
-          if (plant) {
-              const plantIndex = this.plants.findIndex(p => p.id === plantId);
-              this.plants.splice(plantIndex, 1);
-              this.archivedPlants.push(plant);
-
-              // Save to localStorage
-              localStorage.setItem('plants', JSON.stringify(this.plants));
-              localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-
-              // Update UI
-              this.renderPlants();
-              this.renderArchivedPlants();
-
-              alert(`${plant.name} has been archived`);
-          }
-      }
-
-      /**
-       * Delete an archived plant
-       * @param {string} plantId - ID of the archived plant to delete
-       */
-      deleteArchivedPlant(plantId) {
-          const plant = this.archivedPlants.find(p => p.id === plantId);
-          if (plant) {
-              const plantIndex = this.archivedPlants.findIndex(p => p.id === plantId);
-              // Remove from archived plants
-              this.archivedPlants.splice(plantIndex, 1);
-
-              // Save to localStorage
-              localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-
-              // Update UI
-              this.renderArchivedPlants();
-
-              alert(`${plant.name} has been permanently deleted`);
-          }
-      }
-
-      /**
-       * Export all plant data as a JSON file
-       */
-      exportData() {
-          // Export both plants and archivedPlants data
-          const plantsData = localStorage.getItem('plants') || '[]';
-          const archivedPlantsData = localStorage.getItem('archivedPlants') || '[]';
-
-          const exportData = {
-              plants: JSON.parse(plantsData),
-              archivedPlants: JSON.parse(archivedPlantsData)
-          };
-
-          const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'plant_data.json';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          alert('Plant data exported successfully!');
-      }
-
-      /**
-       * Add an event to a plant
-       * @param {string} plantName - Name of the plant
-       * @param {string} eventType - Type of event
-       * @param {string} date - Date of the event in YYYY-MM-DD format
-       */
-      addEventToPlant(plantName, eventType, date, plantId) {
-          // console.log(`Adding event ${eventType} to plant ${plantName}`);
-          // Find the plant by ID if provided, otherwise by name
-          let plant;
-          if (plantId) {
-              plant = this.plants.find(p => p.id === plantId);
-              if (!plant) {
-                  plant = this.archivedPlants.find(p => p.id === plantId);
-              }
-          } else {
-              // Fallback to name-based search for backward compatibility
-              plant = this.plants.find(p => p.name === plantName);
-              if (!plant) {
-                  plant = this.archivedPlants.find(p => p.name === plantName);
-              }
-          }
-
-          if (plant) {
-              const event = plant.addEvent(eventType, date);
-
-              // Save to localStorage - determine which storage to use
-              if (this.plants.includes(plant)) {
-                  localStorage.setItem('plants', JSON.stringify(this.plants));
-              } else { // archived plants
-                  localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-              }
-
-              // Update UI - find the specific events list for this plant and update it
-              const eventsList = document.getElementById(`events-${plant.id}`);
-              if (eventsList) {
-                  // Replace all events in the list to show complete history
-                  eventsList.innerHTML = this.renderEvents(plant.events, plant.id);
-              }
-
-              // Note: All event listeners are now handled through delegation in setupEventListeners()
-          }
-      }
-
-      /**
-       * Edit an event for a plant
-       * @param {string} plantName - Name of the plant
-       * @param {number} eventIndex - Index of the event to edit
-       */
-      editEvent(plantId, eventIndex) {
-          // Get the selected plant
-          let plant = this.plants.find(p => p.id === plantId);
-
-          // If not found in active plants, check archived plants
-          if (!plant) {
-              plant = this.archivedPlants.find(p => p.id === plantId);
-          }
-
-          if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
-              const currentEvent = plant.events[eventIndex];
-              const newType = prompt('Enter new event type:', currentEvent.type);
-
-              if (newType) {
-                  // Update the event
-                  plant.events[eventIndex].type = newType;
-
-                  // Save to localStorage - determine which storage to use
-                  if (this.plants.includes(plant)) {
-                      localStorage.setItem('plants', JSON.stringify(this.plants));
-                  } else { // archived plants
-                      localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-                  }
-
-                  // Update UI - find the specific events list for this plant and update it
-                  const eventsList = document.getElementById(`events-${plant.id}`);
-                  if (eventsList) {
-                      // Replace all events in the list to show complete history
-                      eventsList.innerHTML = this.renderEvents(plant.events, plant.id);
-                  }
-
-                  alert(`Updated event for ${plant.name}`);
-              }
-          } else {
-              alert('Invalid event selection');
-          }
-      }
-
-      /**
-       * Edit the date of an event for a plant
-       * @param {string} plantId - ID of the plant
-       * @param {number} eventIndex - Index of the event to edit
-       */
-      editDate(plantId, eventIndex) {
-          // Get the selected plant
-          let plant = this.plants.find(p => p.id === plantId);
-
-          // If not found in active plants, check archived plants
-          if (!plant) {
-              plant = this.archivedPlants.find(p => p.id === plantId);
-          }
-
-          if (plant && eventIndex >= 0 && eventIndex < plant.events.length) {
-              const currentEvent = plant.events[eventIndex];
-              // Eingabe wird jetzt per Eingabemaske abgewickelt
-
-              // Validate and parse the date
-              const newDateStr = prompt('Enter new date (YYYY-MM-DD):', this.formatDateForInput(currentEvent.date));
-              if (newDateStr) {
-                  const newDate = this.parseDate(newDateStr);
-                  if (newDate) {
-                      // Update the event
-                      plant.events[eventIndex].date = newDate.toISOString();
-
-                      // Save to localStorage - determine which storage to use
-                      if (this.plants.includes(plant)) {
-                          localStorage.setItem('plants', JSON.stringify(this.plants));
-                      } else { // archived plants
-                          localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
-                      }
-
-                      // Update UI - find the specific events list for this plant and update it
-                      const eventsList = document.getElementById(`events-${plant.id}`);
-                      if (eventsList) {
-                          // Replace all events in the list to show complete history
-                          eventsList.innerHTML = this.renderEvents(plant.events, plant.id);
-                      }
-
-                      alert(`Updated date for ${plant.name}'s event`);
-                  } else {
-                      alert('Invalid date format. Please use YYYY-MM-DD.');
-                  }
-              }
-          } else {
-              alert('Invalid event selection');
-          }
-      }
-
-      /**
-       * Parse a date string in YYYY-MM-DD format
-       * @param {string} dateStr - Date string to parse
-       * @returns {Date|null} Parsed Date object or null if invalid
-       */
-      parseDate(dateStr) {
-          if (!dateStr) return null;
-          const parts = dateStr.split('-');
-          if (parts.length !== 3) return null;
-
-          const year = parseInt(parts[0]);
-          const month = parseInt(parts[1]) - 1; // Months are 0-based in JS Date
-          const day = parseInt(parts[2]);
-
-          // Validate date components
-          if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
-          if (year < 1000 || month < 0 || month > 11 || day < 1) return null;
-
-          const date = new Date(year, month, day);
-          // Check if the date is valid (accounting for month/day boundaries)
-          if (date.getFullYear() === year && date.getMonth() === month && date.getDate() === day) {
-              return date;
-          }
-          return null;
-      }
-
-      /**
-       * Format a date object as YYYY-MM-DD
-       * @param {string} dateStr - Date string to format
-       * @returns {string} Formatted date string
-       */
-      formatDateForInput(dateStr) {
-          const date = new Date(dateStr);
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-      }
-
-      /**
-       * Set up event listeners for the application
-       */
-      setupEventListeners() {
-          // Remove existing event listeners if they exist to prevent duplicates
-          document.removeEventListener('click', this.handleDocumentClick);
-
-          // Set up event delegation for the entire document
-          document.addEventListener('click', this.handleDocumentClick);
-
-          // Set up form-based plant addition
-          const addPlantBtn = document.getElementById('addPlantFinalBtn');
-          if (addPlantBtn) {
-              addPlantBtn.addEventListener('click', () => {
-                  const nameInput = document.getElementById('plantNameInput');
-                  const dateInput = document.getElementById('plantSeedDateInput');
-
-                  const name = nameInput.value.trim();
-                  const seedDate = dateInput.value;
-
-                  if (!name || !seedDate) {
-                      alert('Please enter both plant name and seed date.');
-                      return;
-                  }
-
-                  this.addPlant(name, seedDate);
-
-                  // Clear the form
-                  nameInput.value = '';
-                  dateInput.value = '';
-              });
-          }
-
-          // Set up export button event listener
-          const exportBtn = document.getElementById('export-data-btn');
-          if (exportBtn) {
-              exportBtn.addEventListener('click', () => {
-                  this.exportData();
-              });
-          }
-
-          // Set up archive toggle
-          const archiveToggle = document.querySelector('#archive-list h2');
-          if (archiveToggle) {
-              // Remove existing event listeners first by replacing the element
-              const newArchiveToggle = archiveToggle.cloneNode(true);
-              archiveToggle.parentNode.replaceChild(newArchiveToggle, archiveToggle);
-
-              // Add click event listener to the new element
-              newArchiveToggle.addEventListener('click', () => {
-                  const archivedPlantsDiv = document.getElementById('archived-plants');
-                  if (archivedPlantsDiv.style.display === 'none') {
-                      archivedPlantsDiv.style.display = 'block';
-                  } else {
-                      archivedPlantsDiv.style.display = 'none';
-                  }
-              });
-          }
-      }
-
-      /**
-       * Handle document click events
-       * @param {Event} e - Click event object
-       */
-      handleDocumentClick(e) {
-          // Plant card click - select plant (only if not clicking on a button or link)
-          if (e.target.closest('.plant-card') && !e.target.closest('button, a')) {
-              const plantId = e.target.closest('.plant-card').dataset.id;
-
-              // Always set the selected plant using its ID
-              this.selectedPlant = plantId;
-
-              // Update UI to reflect selection changes
-              this.renderPlants();
-              e.stopPropagation();
-              return;
-          }
-
-          // Edit event buttons
-          if (e.target.classList.contains('edit-event-btn')) {
-              const plantId = e.target.dataset.plant;
-              const eventIndex = parseInt(e.target.dataset.index);
-              this.editEvent(plantId, eventIndex);
-              e.stopPropagation();
-              return;
-          }
-
-          // Edit date buttons
-          if (e.target.classList.contains('edit-date-btn')) {
-              const plantId = e.target.dataset.plant;
-              const eventIndex = parseInt(e.target.dataset.index);
-              this.editDate(plantId, eventIndex);
-              e.stopPropagation();
-              return;
-          }
-
-          // Delete event buttons
-          if (e.target.classList.contains('delete-event-btn')) {
-              const plantId = e.target.dataset.plant;
-              const eventIndex = parseInt(e.target.dataset.index);
-              this.removeEvent(plantId, eventIndex);
-              e.stopPropagation();
-              return;
-          }
-
-          // Add event buttons
-          if (e.target.classList.contains('add-event-btn')) {
-              const plantId = e.target.dataset.id;
-              const plantName = e.target.dataset.name;
-              const calendar = Calendar.getInstance();
-              calendar.addEventToPlant(plantName, plantId);
-              e.stopPropagation();
-              return;
-          }
-
-          // Delete plant buttons
-          if (e.target.classList.contains('delete-btn')) {
-              this.deletePlant(e.target.dataset.id);
-              e.stopPropagation();
-              return;
-          }
-
-          // Archive plant buttons
-          if (e.target.classList.contains('archive-btn')) {
-              this.archivePlant(e.target.dataset.id);
-              e.stopPropagation();
-              return;
-          }
-
-          // Delete archived plant buttons
-          if (e.target.classList.contains('delete-archived-btn')) {
-              const plantId = e.target.dataset.id;
-              const plant = this.archivedPlants.find(p => p.id === plantId);
-              const confirmed = confirm(`Are you sure you want to permanently delete ${plant.name}? This action cannot be undone.`);
-              if (confirmed) {
-                  this.deleteArchivedPlant(plantId);
-              }
-              e.stopPropagation();
-              return;
-          }
-
-          // Toggle events view buttons
-          if (e.target.classList.contains('toggle-events-btn')) {
-              const plantId = e.target.dataset.id;
-              const eventsList = document.getElementById(`events-${plantId}`);
-              if (eventsList.style.display === 'none') {
-                  eventsList.style.display = 'block';
-              } else {
-                  eventsList.style.display = 'none';
-              }
-              e.stopPropagation();
-          }
-
-          // Phase button click - toggle menu
-          if (e.target.classList.contains('phase-btn')) {
-              const plantId = e.target.dataset.id;
-              const phaseMenu = document.getElementById(`phase-menu-${plantId}`);
-
-              // Close all other phase menus first
-              document.querySelectorAll('.phase-menu').forEach(menu => {
-                  if (menu.id !== `phase-menu-${plantId}`) {
-                      menu.style.display = 'none';
-                  }
-              });
-
-              // Toggle this menu
-              if (phaseMenu) {
-                  const isVisible = phaseMenu.style.display === 'block';
-                  phaseMenu.style.display = isVisible ? 'none' : 'block';
-
-                  // Prevent menu from being cut off by card boundaries or viewport
-                  if (!isVisible) {
-                      setTimeout(() => {
-                          // Check if menu would be cut off and adjust position if needed
-                          const rect = phaseMenu.getBoundingClientRect();
-                          const cardRect = e.target.closest('.plant-card').getBoundingClientRect();
-
-                          if (rect.bottom > window.innerHeight || rect.top < 0) {
-                              // Move menu up if it goes beyond viewport boundaries
-                              phaseMenu.style.bottom = 'auto';
-                              phaseMenu.style.top = `${Math.max(0, -rect.top + 10)}px`;
-                          } else if (rect.bottom > cardRect.bottom) {
-                              // Move menu up if it goes beyond card boundaries
-                              phaseMenu.style.bottom = 'auto';
-                              phaseMenu.style.top = `${Math.max(0, rect.bottom - cardRect.bottom + 5)}px`;
-                          }
-                      }, 10);
-                  } else {
-                      // Reset position when closing
-                      phaseMenu.style.top = 'auto';
-                      phaseMenu.style.bottom = '100%';
-                  }
-              }
-
-              e.stopPropagation();
-          }
-
-          // Phase option click - update plant phase
-          if (e.target.classList.contains('phase-option')) {
-              const plantId = e.target.dataset.id;
-              const newPhase = e.target.dataset.phase;
-
-              this.updatePlantPhase(plantId, newPhase);
-
-              // Update the button text and class
-              const phaseBtn = document.querySelector(`button.phase-btn[data-id="${plantId}"]`);
-              if (phaseBtn) {
-                  phaseBtn.textContent = newPhase;
-                  phaseBtn.className = `phase-btn phase-btn-${newPhase.toLowerCase().replace(' ', '-')}`;
-
-                  // Close the menu after selection
-                  const phaseMenu = document.getElementById(`phase-menu-${plantId}`);
-                  if (phaseMenu) {
-                      phaseMenu.style.display = 'none';
-                  }
-              }
-
-              e.stopPropagation();
-          }
-
-          // Close phase menus when clicking outside
-          if (!e.target.closest('.phase-control')) {
-              document.querySelectorAll('.phase-menu').forEach(menu => {
-                  menu.style.display = 'none';
-              });
-          }
-      }
-  }
-
+/**
+ * Plant Manager App - Main JavaScript File
+ *
+ * This file contains the core logic for the Plant Manager application.
+ * It includes classes and functions for managing plants, handling events,
+ * and interacting with localStorage.
+ *
+ * Features:
+ * - Plant tracking with name, seed date, and growth phases
+ * - Event management (watering, fertilizing, etc.)
+ * - LocalStorage persistence
+ * - Archive functionality
+ * - Data export/import
+ */
+/**
+ * Plant growth phases
+ * @type {string[]}
+ */
+const PLANT_PHASES = [
+    'Seedling',
+    'Mutter',
+    'Vegetative',
+    'Flowering',
+    'Drying',
+    'Curing'
+];
+
+
+/**
+ * Generate a unique identifier
+ * Uses cryptographic random values for better uniqueness guarantees
+ * @returns {string} Unique ID string (UUID v4 format)
+ */
+function generateUUID() {
+    if (crypto && crypto.getRandomValues) {
+        // Use cryptographic random values for better security
+        const randomArray = new Uint8Array(16);
+        crypto.getRandomValues(randomArray);
+        // Convert to UUID version 4 format
+        return (
+            (randomArray[0] & 0x3f | 0x40).toString(16) +
+            (randomArray[1] & 0x0f | 0x40).toString(16) +
+            (randomArray[2] & 0x0f | 0x40).toString(16) +
+            (randomArray[3] & 0x0f | 0x40).toString(16) +
+            '-' +
+            (randomArray[4] & 0x0f | 0x40).toString(16) +
+            (randomArray[5] & 0x3f | 0x40).toString(16) +
+            '-' +
+            (randomArray[6] & 0x0f | 0x40).toString(16) +
+            (randomArray[7] & 0x3f | 0x40).toString(16) +
+            '-' +
+            (randomArray[8] & 0x3f | 0x40).toString(16) +
+            (randomArray[9] & 0x0f | 0x40).toString(16) +
+            '-' +
+            ((randomArray[10] & 0x3f | 0x40).toString(16) +
+            (randomArray[11] & 0x0f | 0x40).toString(16) +
+            (randomArray[12] & 0x3f | 0x40).toString(16) +
+            (randomArray[13] & 0xff).toString(16))
+        );
+    } else {
+        // Fallback to Math.random() for older environments
+        return 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxx'.replace(/x/g, y => {
+            const r = Math.random() * 16 | 0;
+            return (y === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+    }
+}
+
+// UUID generation is now cryptographically secure using crypto.getRandomValues()
+
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const plantManager = PlantManager.getInstance();
+        plantManager.setupEventListeners();
+
+        const calendar = Calendar.getInstance();
+        calendar.renderCalendar();
+
+        // Set up event delegation for calendar day clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('day') && !e.target.classList.contains('empty')) {
+                const day = e.target.dataset.day;
+                if (day) {
+                    calendar.selectDay(parseInt(day, 10));
+                }
+            }
+        });
+
+        console.log('DOMContentLoaded event fired, plantManager and calendar initialized');
+    } catch (error) {
+        console.error('Error during DOMContentLoaded:', error);
+    }
+});
+
+/**
+ * Class representing a plant
+ */
+class Plant {
+    constructor(name, seedDate, id) {
+        this.name = name;
+        this.seedDate = seedDate;
+        this.events = [];
+        this.phase = PLANT_PHASES[0]; // Default to first phase
+        this.id = id || generateUUID(); // Assign ID, generate new one if not provided
+    }
+
+    /**
+     * Add an event to the plant
+     * @param {string} eventType - Type of event (e.g., "Watered", "Fertilized")
+     * @param {string} date - Date of the event in YYYY-MM-DD format
+     * @returns {Object} The event object that was added
+     */
+    addEvent(eventType, date) {
+        const event = { type: eventType, date };
+        this.events.push(event);
+        return event;
+    }
+
+    /**
+     * Remove an event from the plant
+     * @param {number} index - Index of the event to remove
+     * @returns {boolean} True if event was removed, false otherwise
+     */
+    removeEvent(index) {
+        if (index >= 0 && index < this.events.length) {
+            this.events.splice(index, 1);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Update the growth phase of the plant
+     * @param {string} newPhase - New growth phase (e.g., "Vegetative", "Flowering")
+     */
+    updatePhase(newPhase) {
+        this.phase = newPhase;
+    }
+}
+
+/**
+ * Singleton class managing all plant operations
+ */
+class PlantManager {
+    constructor() {
+        if (PlantManager.instance) {
+            return PlantManager.instance;
+        }
+
+        this.plants = [];
+        this.archivedPlants = [];
+        this.selectedPlants = new Set(); // Track multiple selected plants using a Set of plant IDs
+
+        // Initialize storage and load data only once
+        this.initStorage();
+        this.loadPlants();
+        this.loadArchivedPlants();
+
+        // Store bound functions for proper cleanup
+        this.handleDocumentClick = this.handleDocumentClick.bind(this);
+
+        // Set the instance
+        PlantManager.instance = this;
+
+        return this;
+    }
+
+    static getInstance() {
+        if (!PlantManager.instance) {
+            PlantManager.instance = new PlantManager();
+        }
+        return PlantManager.instance;
+    }
+
+    /**
+     * Initialize localStorage if needed
+     */
+    initStorage() {
+        // Initialize localStorage if needed
+        if (!localStorage.getItem('plants')) {
+            localStorage.setItem('plants', JSON.stringify([]));
+        }
+        if (!localStorage.getItem('archivedPlants')) {
+            localStorage.setItem('archivedPlants', JSON.stringify([]));
+        }
+    }
+
+    /**
+     * Load plants from localStorage and render them
+     */
+    loadPlants() {
+        try {
+            const storedPlants = localStorage.getItem('plants');
+            console.log('Loaded plants from storage:', storedPlants);
+            if (storedPlants) {
+                try {
+                    this.plants = JSON.parse(storedPlants).map(p => {
+                        try {
+                            const plant = new Plant(p.name, p.seedDate, p.id); // Pass ID if available
+                            // Ensure events are properly deserialized
+                            if (p.events && Array.isArray(p.events)) {
+                                plant.events = p.events;
+                            }
+                            // Set phase if available
+                            if (p.phase) {
+                                plant.phase = p.phase;
+                            }
+                            return plant;
+                        } catch (plantError) {
+                            console.error('Error creating plant:', plantError);
+                            return null;
+                        }
+                    }).filter(p => p !== null);
+                    console.log('Parsed plants:', this.plants);
+                    this.renderPlants();
+                } catch (parseError) {
+                    console.error('Error parsing plants from localStorage:', parseError);
+                }
+            } else {
+                console.log('No plants found in localStorage');
+            }
+        } catch (error) {
+            console.error('Error loading plants:', error);
+        }
+    }
+
+    /**
+     * Load archived plants from localStorage and render them
+     */
+    loadArchivedPlants() {
+        const storedArchived = localStorage.getItem('archivedPlants');
+        if (storedArchived) {
+            this.archivedPlants = JSON.parse(storedArchived).map(p => {
+                const plant = new Plant(p.name, p.seedDate, p.id); // Pass ID if available
+                // Ensure events are properly deserialized
+                if (p.events && Array.isArray(p.events)) {
+                    plant.events = p.events;
+                }
+                return plant;
+            });
+            this.renderArchivedPlants();
+        }
+    }
+
+    /**
+     * Add a new plant to the collection
+     * @param {string} name - Name of the plant
+     * @param {string} seedDate - Seed date in YYYY-MM-DD format
+     * @returns {boolean} True if plant was added, false otherwise
+     */
+     addPlant(name, seedDate) {
+         if (!name || !seedDate) {
+             alert('Please provide both plant name and seed date.');
+             return false;
+         }
+
+         // Validate the date format
+         const parsedDate = this.parseDate(seedDate);
+         if (!parsedDate) {
+             alert('Invalid date format. Please use YYYY-MM-DD.');
+             return false;
+         }
+
+         const newPlant = new Plant(name, seedDate); // ID is automatically generated
+         this.plants.push(newPlant);
+
+         // Save to localStorage
+         localStorage.setItem('plants', JSON.stringify(this.plants));
+
+         // Update UI
+         this.renderPlants();
+
+         // Add the new plant to the selectedPlants set if it was just added via multi-selection
+         // This allows for adding multiple plants and having them selected immediately
+         if (this.selectedPlants.size > 0) {
+             this.selectedPlants.add(newPlant.id);
+         }
+
+         return true;
+     }
+
+    /**
+     * Add an event to all selected plants
+     * @param {string} eventType - Type of event (e.g., "Watered", "Fertilized")
+     * @param {string} date - Date of the event in YYYY-MM-DD format
+     * @returns {number} Number of plants that had events added
+     */
+     addEventToSelectedPlants(eventType, date) {
+         let eventCount = 0;
+
+         if (this.selectedPlants.size === 0) {
+             alert('No plants selected. Please select one or more plants first.');
+             return 0;
+         }
+
+         if (!eventType) {
+             alert('Please provide an event type.');
+             return 0;
+         }
+
+         // Validate the date format
+         const parsedDate = this.parseDate(date);
+         if (!parsedDate) {
+             alert('Invalid date format. Please use YYYY-MM-DD.');
+             return 0;
+         }
+
+         // Add event to each selected plant
+         this.plants.forEach(plant => {
+             if (this.selectedPlants.has(plant.id)) {
+                 plant.addEvent(eventType, date);
+                 eventCount++;
+             }
+         });
+
+         // Save updated plant data to localStorage
+         localStorage.setItem('plants', JSON.stringify(this.plants));
+
+         // Update UI to show new events
+         this.renderPlants();
+
+         // Show success message
+         alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'}`);
+
+         // Add a "Deselect All" button after adding events to multiple plants
+         if (eventCount > 1) {
+             const deselectAllBtn = document.createElement('button');
+             deselectAllBtn.id = 'deselect-all-btn';
+             deselectAllBtn.innerHTML = '<span>🗕</span> Deselect All';
+             deselectAllBtn.style.position = 'fixed';
+             deselectAllBtn.style.top = '50%';
+             deselectAllBtn.style.left = '50%';
+             deselectAllBtn.style.transform = 'translate(-50%, -50%)';
+             deselectAllBtn.style.padding = '12px 24px';
+             deselectAllBtn.style.backgroundColor = '#ff6347';
+             deselectAllBtn.style.color = 'white';
+             deselectAllBtn.style.border = 'none';
+             deselectAllBtn.style.borderRadius = '8px';
+             deselectAllBtn.style.cursor = 'pointer';
+             deselectAllBtn.style.zIndex = '1000';
+             deselectAllBtn.style.boxShadow = '0 4px 10px rgba(0,0,0,0.3)';
+             deselectAllBtn.style.transition = 'opacity 0.3s ease';
+             deselectAllBtn.style.fontSize = '16px';
+             deselectAllBtn.style.fontWeight = 'bold';
+             deselectAllBtn.style.minWidth = '200px';
+             deselectAllBtn.style.textAlign = 'center';
+
+             // Add countdown text
+             const countdownText = document.createElement('div');
+             countdownText.style.fontSize = '12px';
+             countdownText.style.color = 'white';
+             countdownText.style.marginTop = '8px';
+             countdownText.textContent = 'This button will disappear in 3 seconds...';
+
+             deselectAllBtn.appendChild(countdownText);
+
+             deselectAllBtn.addEventListener('click', () => {
+                 this.selectedPlants.clear();
+                 // Update UI to remove selection from all cards
+                 document.querySelectorAll('.plant-card').forEach(card => {
+                     card.classList.remove('selected');
+                 });
+                 // Remove the deselect button immediately on click
+                 if (deselectAllBtn.parentNode) {
+                     deselectAllBtn.parentNode.removeChild(deselectAllBtn);
+                 }
+             });
+
+             // Add the button to the body
+             document.body.appendChild(deselectAllBtn);
+
+             // Remove the button after 6 seconds
+             setTimeout(() => {
+                 if (deselectAllBtn.parentNode) {
+                     deselectAllBtn.parentNode.removeChild(deselectAllBtn);
+                 }
+             }, 6000);
+
+             // Update countdown text every second
+             let countdown = 6;
+             const countdownInterval = setInterval(() => {
+                 countdown--;
+                 countdownText.textContent = `This button will disappear in ${countdown} seconds...`;
+                 if (countdown <= 0) {
+                     clearInterval(countdownInterval);
+                 }
+             }, 1000);
+         }
+
+         return eventCount;
+     }
+
+    /**
+     * Parse date string and validate format
+     * @param {string} dateStr - Date string in YYYY-MM-DD format
+     * @returns {Date|null} Parsed Date object or null if invalid
+     */
+    parseDate(dateStr) {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        const [year, month, day] = parts;
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+        const date = new Date(year, month - 1, day);
+        // Validate the date (handle invalid dates like February 30)
+        if (date.getFullYear() !== parseInt(year) ||
+            date.getMonth() !== parseInt(month) - 1 ||
+            date.getDate() !== parseInt(day)) {
+            return null;
+        }
+        return date;
+    }
+
+    /**
+     * Setup event listeners for the document
+     */
+    setupEventListeners() {
+        // Add plant button
+        document.getElementById('addPlantFinalBtn').addEventListener('click', () => {
+            const plantName = document.getElementById('plantNameInput').value;
+            const plantSeedDate = document.getElementById('plantSeedDateInput').value;
+
+            if (this.addPlant(plantName, plantSeedDate)) {
+                // Clear input fields after successful addition
+                document.getElementById('plantNameInput').value = '';
+                document.getElementById('plantSeedDateInput').value = '';
+            }
+        });
+
+        // Export data button
+        document.getElementById('export-data-btn').addEventListener('click', () => {
+            const plantData = this.exportPlants();
+            const blob = new Blob([plantData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'plants.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Add events to selected plants button
+        const addEventsToSelectedBtn = document.createElement('button');
+        addEventsToSelectedBtn.id = 'add-events-to-selected-btn';
+        addEventsToSelectedBtn.innerHTML = '<span>📅</span> Add Event to Selected';
+        addEventsToSelectedBtn.addEventListener('click', () => {
+            const eventType = prompt('Enter event type (e.g., Watered, Fertilized):');
+            if (eventType) {
+                const today = new Date();
+                const eventDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+                this.addEventToSelectedPlants(eventType, eventDate);
+            }
+        });
+
+        // Clear selection button
+        const clearSelectionBtn = document.createElement('button');
+        clearSelectionBtn.id = 'clear-selection-btn';
+        clearSelectionBtn.innerHTML = '<span>🗑️</span> Clear Selection';
+        clearSelectionBtn.addEventListener('click', () => {
+            this.selectedPlants.clear();
+            // Update UI to remove selection from all cards
+            document.querySelectorAll('.plant-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+        });
+
+        // Add buttons to actions section
+        const actionsSection = document.getElementById('actions');
+        if (actionsSection) {
+            actionsSection.appendChild(addEventsToSelectedBtn);
+            actionsSection.appendChild(clearSelectionBtn);
+        }
+
+        // Archive section toggle
+        const archiveHeader = document.querySelector('.archive-section h2');
+        if (archiveHeader) {
+            archiveHeader.addEventListener('click', () => {
+                const archivedPlantsDiv = document.getElementById('archived-plants');
+                if (archivedPlantsDiv) {
+                    if (archivedPlantsDiv.style.display === 'none' || !archivedPlantsDiv.style.display) {
+                        archivedPlantsDiv.style.display = 'block';
+                        archiveHeader.textContent = 'Archived Plants ▼';
+                    } else {
+                        archivedPlantsDiv.style.display = 'none';
+                        archiveHeader.textContent = 'Archived Plants ▶';
+                    }
+                }
+            });
+        }
+
+        // Handle clicks outside of plant cards to close menus
+        document.addEventListener('click', this.handleDocumentClick);
+    }
+
+    /**
+     * Handle document click events
+     * Closes phase menus and events sections when clicking outside
+     * @param {MouseEvent} event - The click event
+     */
+    handleDocumentClick(event) {
+        // Close phase menus when clicking outside
+        document.querySelectorAll('.phase-menu').forEach(menu => {
+            if (!menu.contains(event.target) && !event.target.classList.contains('phase-btn')) {
+                menu.style.display = 'none';
+            }
+        });
+
+        // Close events sections when clicking outside
+        document.querySelectorAll('.events-dropdown').forEach(section => {
+            const toggleBtn = section.querySelector('.toggle-events-btn');
+            if (toggleBtn && !section.contains(event.target) && !event.target.classList.contains('toggle-events-btn') &&
+                !event.target.classList.contains('delete-event-btn') && !event.target.closest('.events-list')) {
+                section.style.display = 'none';
+            }
+        });
+    }
+
+    /**
+     * Export plant data to JSON
+     * @returns {string} JSON string containing plant data
+     */
+    exportPlants() {
+        return JSON.stringify(this.plants);
+    }
+
+    /**
+     * Import plant data from JSON
+     * @param {string} jsonStr - JSON string containing plant data
+     * @returns {boolean} True if import was successful, false otherwise
+     */
+    importPlants(jsonStr) {
+        try {
+            const importedPlants = JSON.parse(jsonStr);
+            if (!Array.isArray(importedPlants)) {
+                throw new Error('Invalid plant data format');
+            }
+            this.plants = importedPlants.map(p => {
+                const plant = new Plant(p.name, p.seedDate, p.id);
+                if (p.events && Array.isArray(p.events)) {
+                    plant.events = p.events;
+                }
+                if (p.phase) {
+                    plant.phase = p.phase;
+                }
+                return plant;
+            });
+            localStorage.setItem('plants', jsonStr);
+            this.renderPlants();
+            return true;
+        } catch (error) {
+            alert('Error importing plants: ' + error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Archive a plant
+     * @param {number} index - Index of the plant to archive
+     * @returns {boolean} True if plant was archived, false otherwise
+     */
+    archivePlant(index) {
+        if (index >= 0 && index < this.plants.length) {
+            const archivedPlant = this.plants.splice(index, 1)[0];
+            this.archivedPlants.push(archivedPlant);
+            localStorage.setItem('plants', JSON.stringify(this.plants));
+            localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
+            this.renderPlants();
+            this.renderArchivedPlants();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Unarchive a plant
+     * @param {number} index - Index of the archived plant to unarchive
+     * @returns {boolean} True if plant was unarchived, false otherwise
+     */
+    unarchivePlant(index) {
+        if (index >= 0 && index < this.archivedPlants.length) {
+            const unarchivedPlant = this.archivedPlants.splice(index, 1)[0];
+            this.plants.push(unarchivedPlant);
+            localStorage.setItem('plants', JSON.stringify(this.plants));
+            localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
+            this.renderPlants();
+            this.renderArchivedPlants();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Render all plants in the UI
+     */
+    renderPlants() {
+        console.log('renderPlants called');
+        const plantList = document.getElementById('plant-list');
+        if (!plantList) {
+            console.log('plant-list element not found');
+            return;
+        }
+
+        // Clear existing plants
+        plantList.innerHTML = '';
+        console.log('Rendering', this.plants.length, 'plants');
+
+        // Render each plant
+        this.plants.forEach((plant, index) => {
+            console.log(`Rendering plant ${index}: ${plant.name}`);
+            const plantCard = document.createElement('div');
+            plantCard.className = 'plant-card';
+            plantCard.dataset.index = index;
+            plantCard.dataset.plantId = plant.id; // Add plant ID for selection tracking
+
+            // Set initial selected state
+            if (this.selectedPlants.has(plant.id)) {
+                plantCard.classList.add('selected');
+            }
+
+            // Add selection functionality
+            plantCard.addEventListener('click', (e) => {
+                // Handle plant selection (toggle selection)
+                if (this.selectedPlants.has(plant.id)) {
+                    this.selectedPlants.delete(plant.id);
+                    plantCard.classList.remove('selected');
+                } else {
+                    this.selectedPlants.add(plant.id);
+                    plantCard.classList.add('selected');
+                }
+
+                // Update UI to show selection state
+                document.querySelectorAll('.plant-card').forEach(card => {
+                    const cardPlantId = card.dataset.plantId;
+                    if (this.selectedPlants.has(cardPlantId)) {
+                        card.classList.add('selected');
+                    } else {
+                        card.classList.remove('selected');
+                    }
+                });
+            });
+
+            // Plant name and seed date
+            plantCard.innerHTML = `
+                <div class="card-header">
+                    <h3>${plant.name}</h3>
+                    <p>Seed Date: ${plant.seedDate}</p>
+                </div>
+                <div class="phase-control">
+                    <label>Phase:</label>
+                    <button class="phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}">${plant.phase}</button>
+                </div>
+                <div class="card-actions">
+                    <button class="archive-btn">Archive</button>
+                </div>
+            `;
+
+            // Add Event button
+            const addEventBtn = document.createElement('button');
+            addEventBtn.className = 'add-event-btn';
+            addEventBtn.innerHTML = '<span>📅</span> Add Event';
+            addEventBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Handle add event functionality
+                const eventType = prompt('Enter event type (e.g., Watered, Fertilized):');
+                if (eventType) {
+                    const today = new Date();
+                    const eventDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+                    // Check if multiple plants are selected
+                    if (this.selectedPlants.size > 1) {
+                        const confirmed = confirm(`You have multiple plants selected. Do you want to add this event to all selected plants?`);
+                        if (confirmed) {
+                            this.addEventToSelectedPlants(eventType, eventDate);
+                        } else {
+                            // Add event to just this plant
+                            plant.addEvent(eventType, eventDate);
+
+                            // Save updated plant data to localStorage
+                            localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                            this.renderPlants(); // Update UI to show new event
+                            alert(`Added ${eventType} event for ${plant.name}`);
+                        }
+                    } else {
+                        // Add event to just this plant
+                        plant.addEvent(eventType, eventDate);
+
+                        // Save updated plant data to localStorage
+                        localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                        this.renderPlants(); // Update UI to show new event
+                        alert(`Added ${eventType} event for ${plant.name}`);
+                    }
+                }
+            });
+
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<span>🗑️</span> Delete';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to delete ${plant.name}?`)) {
+                    this.plants.splice(index, 1);
+                    localStorage.setItem('plants', JSON.stringify(this.plants));
+                    this.renderPlants(); // Update UI to remove deleted plant
+                }
+            });
+
+            // Phase dropdown menu
+            const phaseMenu = document.createElement('div');
+            phaseMenu.className = 'phase-menu';
+            phaseMenu.style.display = 'none';
+
+            PLANT_PHASES.forEach(phase => {
+                const phaseOption = document.createElement('button');
+                phaseOption.className = `phase-option phase-${phase.toLowerCase().replace(' ', '-')}`;
+                phaseOption.textContent = phase;
+                phaseOption.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    plant.updatePhase(phase);
+                    this.renderPlants(); // Update UI to show new phase
+                });
+                phaseMenu.appendChild(phaseOption);
+            });
+
+            // Phase button with dropdown functionality
+            const phaseBtn = plantCard.querySelector('.phase-btn');
+            phaseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                phaseMenu.style.display = phaseMenu.style.display === 'none' ? 'block' : 'none';
+            });
+
+            // Add buttons to actions div in the desired order: Add Event, Archive, Delete
+            const actionsDiv = plantCard.querySelector('.card-actions');
+            // Remove the existing archive button from the DOM
+            const existingArchiveBtn = actionsDiv.querySelector('.archive-btn');
+            if (existingArchiveBtn) {
+                existingArchiveBtn.remove();
+            }
+
+            // Add buttons in the desired order
+            actionsDiv.appendChild(addEventBtn);
+            actionsDiv.appendChild(deleteBtn);
+
+            // Create and add the archive button
+            const newArchiveBtn = document.createElement('button');
+            newArchiveBtn.className = 'archive-btn';
+            newArchiveBtn.innerHTML = '<span>✏️</span> Archive';
+            newArchiveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.archivePlant(index);
+            });
+            actionsDiv.appendChild(newArchiveBtn);
+
+            // Create the toggle button with the 📋 icon
+            const toggleEventsBtn = document.createElement('button');
+            toggleEventsBtn.className = 'toggle-events-btn';
+            toggleEventsBtn.innerHTML = '<span>📋</span> View Events';
+
+            // Events section (will be toggled)
+            const eventsSection = document.createElement('div');
+            eventsSection.className = 'events-dropdown';
+            eventsSection.style.display = 'none';
+
+            const eventsList = document.createElement('div');
+            eventsList.className = 'events-list';
+
+            if (plant.events && plant.events.length > 0) {
+                plant.events.forEach((event, eventIndex) => {
+                    const eventItem = document.createElement('div');
+                    eventItem.className = 'event';
+                    eventItem.innerHTML = `
+                        ${event.type} - ${event.date}
+                        <button class="edit-event-btn" data-event-index="${eventIndex}">✏️</button>
+                        <button class="delete-event-btn" data-event-index="${eventIndex}">✕</button>
+                    `;
+
+                    // Edit event button functionality
+                    const editEventBtn = eventItem.querySelector('.edit-event-btn');
+                    editEventBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        // Get current event data
+                        const currentType = prompt('Edit event type:', event.type);
+
+                        // Update event type only
+                        plant.events[eventIndex].type = currentType;
+
+                        // Save updated plant data to localStorage
+                        localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                        this.renderPlants(); // Update UI to show edited event
+                    });
+
+                    // Delete event button functionality
+                    const deleteEventBtn = eventItem.querySelector('.delete-event-btn');
+                    deleteEventBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (confirm('Are you sure you want to delete this event?')) {
+                            plant.removeEvent(eventIndex);
+
+                            // Save updated plant data to localStorage
+                            localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                            this.renderPlants(); // Update UI to remove deleted event
+                        }
+                    });
+
+                    eventsList.appendChild(eventItem);
+                });
+            } else {
+                eventsList.innerHTML = '<p>No events yet.</p>';
+            }
+
+            eventsSection.appendChild(eventsList);
+
+            // Add button and events section to card
+            plantCard.appendChild(toggleEventsBtn);
+            plantCard.appendChild(eventsSection);
+
+            // Add click event to toggle events display
+            toggleEventsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                eventsSection.style.display = eventsSection.style.display === 'none' ? 'block' : 'none';
+            });
+
+            // Add phase menu to card
+            plantCard.appendChild(phaseMenu);
+
+            // Archive button functionality
+            const archiveBtn = plantCard.querySelector('.archive-btn');
+            archiveBtn.innerHTML = '<span>✏️</span> Archive';
+            archiveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.archivePlant(index);
+            });
+
+            plantList.appendChild(plantCard);
+        });
+    }
+
+    /**
+     * Render all archived plants in the UI
+     */
+    renderArchivedPlants() {
+        const archivedPlantsDiv = document.getElementById('archived-plants');
+        if (!archivedPlantsDiv) return;
+
+        // Clear existing archived plants
+        archivedPlantsDiv.innerHTML = '';
+
+        // Render each archived plant
+        this.archivedPlants.forEach((plant, index) => {
+            const archivedPlant = document.createElement('div');
+            archivedPlant.className = 'archived-plant';
+            archivedPlant.dataset.index = index;
+
+            archivedPlant.innerHTML = `
+                <div class="card-header">
+                    <h4>${plant.name}</h4>
+                    <p>Seed Date: ${plant.seedDate}</p>
+                </div>
+                <div class="card-actions">
+                    <button class="unarchive-btn">Unarchive</button>
+                </div>
+            `;
+
+            // Unarchive button functionality
+            const unarchiveBtn = archivedPlant.querySelector('.unarchive-btn');
+            unarchiveBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.unarchivePlant(index);
+            });
+
+            archivedPlantsDiv.appendChild(archivedPlant);
+        });
+    }
+}
+   

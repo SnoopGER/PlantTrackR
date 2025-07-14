@@ -245,6 +245,37 @@ h1 {
     padding-top: 10px;
 }
 
+/* Events list */
+.events-list {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+/* Individual event styles */
+.event {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.event:last-child {
+    border-bottom: none;
+}
+
+.delete-event-btn {
+    background: none;
+    border: none;
+    color: #d9534f;
+    cursor: pointer;
+    font-size: 1.2em;
+    margin-left: 10px;
+}
+
 .toggle-events-btn {
     background-color: #f0f8ff;
     border: 1px solid #d1e7dd;
@@ -424,6 +455,11 @@ body.dark-mode .status-curing {
 }
 
 /* Plant selection indicator */
+.plant-card.selected {
+    border: 2px solid #ffcc00; /* Gold border for selected cards */
+    box-shadow: 0 0 0 2px rgba(255, 204, 0, 0.5); /* Glow effect */
+}
+
 .plant-card.selected .card-header h3 {
     font-weight: bold;
     position: relative;
@@ -435,7 +471,7 @@ body.dark-mode .status-curing {
     margin-right: 5px;
 }
 
-/* Ensure only one plant can be selected at a time */
+/* Ensure selection indicators work for multiple cards */
 .plant-card .card-header h3::before {
     display: none;
 }
