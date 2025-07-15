@@ -4,7 +4,7 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>PlantTrackR</title>
-    <link href="css/styles.css" rel="stylesheet"/>
+    <link href="src/css/styles_new.css" rel="stylesheet"/>
     <style>
         /* Dark mode styles that override some base styles */
         body.dark-mode {
@@ -29,16 +29,33 @@
     <!-- Main title of the application -->
     <h1>PlantTrackR</h1>
 
-    <!-- Plant list container - plant cards will be inserted here by JavaScript -->
-    <div id="plant-list">
-        <!-- Plant items will be added here -->
+    <!-- Main content container with sidebar -->
+    <div id="main-content">
+        <!-- Quick Cards sidebar -->
+        <div id="quick-cards-sidebar">
+            <h2>
+                Quick Cards
+                <button id="add-quick-card-btn" class="collapse-btn">➕</button>
+            </h2>
+            <div id="quick-card-list">
+                <!-- Quick Cards will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Plant list container - plant cards will be inserted here by JavaScript -->
+        <div id="plant-list">
+            <!-- Plant items will be added here -->
+        </div>
     </div>
 
     <!-- Add plant form -->
     <div id="add-plant-form">
         <h3>🌱 Add New Plant</h3>
-        <input id="plantNameInput" placeholder="Plant name" type="text"/>
-        <input id="plantSeedDateInput" type="date"/>
+        <label for="plantNameInput">Plant Name:</label>
+        <input id="plantNameInput" type="text" required/>
+
+        <label for="plantSeedDateInput">Seed Date:</label>
+        <input id="plantSeedDateInput" type="date" required/>
 
         <script>
             document.addEventListener('DOMContentLoaded', function() {
@@ -61,9 +78,23 @@
                     });
                 }
 
+                // Initialize sidebar collapse functionality
+                const sidebar = document.getElementById('quick-cards-sidebar');
+                const collapseBtn = document.getElementById('add-quick-card-btn');
+
+                if (sidebar && collapseBtn) {
+                    collapseBtn.addEventListener('click', function() {
+                        sidebar.classList.toggle('collapsed');
+                    });
+                }
             });
         </script>
-        <button id="addPlantFinalBtn"><span>🌱</span> Add Plant</button>
+        <div class="form-buttons">
+            <button id="addPlantFinalBtn"><span>🌱</span> Add Plant</button>
+            <button id="export-data-btn">Export Data</button>
+            <button id="add-events-to-selected-btn"><span>📅</span> Add Event to Selected</button>
+            <button id="clear-selection-btn"><span>🗑️</span> Clear Selection</button>
+        </div>
     </div>
 
     <!-- Calendar component -->
@@ -72,20 +103,7 @@
         <!-- Calendar will be displayed here -->
     </div>
 
-    <!-- Action buttons -->
-    <div id="actions">
-        <h2>Actions</h2>
-        <button id="export-data-btn">Export Data</button>
-    </div>
-    
-    <!-- Quick Cards section -->
-    <div id="quick-cards-section">
-        <h2>Quick Cards <button id="add-quick-card-btn">➕ Add Quick Card</button></h2>
-        <div id="quick-card-list">
-            <!-- Quick Cards will be displayed here -->
-        </div>
-    </div>
-    
+
     <!-- Archived plants section -->
     <div class="archive-section" id="archive-list">
         <h2>Archived Plants ▼</h2>
@@ -97,9 +115,16 @@
     <!-- Environment data inputs (German comments) -->
     <div id="environmentData" style="margin-top: 20px;">
         <h3>🌡️ Umgebungsdaten</h3>
-        <p>Temperatur: <input id="tempInput" placeholder="°C" style="width:60px;" type="number"/>
-            Luftfeuchte: <input id="humidityInput" placeholder="%" style="width:60px;" type="number"/>
-            pH: <input id="phInput" placeholder="pH" step="0.1" style="width:60px;" type="number"/></p>
+        <p>
+            <label for="tempInput">Temperatur (°C):</label>
+            <input id="tempInput" style="width:60px;" type="number" required/>
+
+            <label for="humidityInput">Luftfeuchte (%):</label>
+            <input id="humidityInput" style="width:60px;" type="number" required/>
+
+            <label for="phInput">pH:</label>
+            <input id="phInput" step="0.1" style="width:60px;" type="number" required/>
+        </p>
     </div>
 
     <!-- Dark mode toggle -->
@@ -113,14 +138,14 @@
     </script>
 
     <!-- Main JavaScript files -->
-    <script src="js/calendar.js"></script><script src="js/main.js"></script><script src="js/quickcards_final.js"></script>
+    <script src="src/js/calendar.js"></script><script src="src/js/main.js"></script><script src="src/js/quickcards_final_complete.js"></script>
 
     <!-- Modal for adding new Quick Cards -->
     <div id="add-quick-card-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn">&times;</span>
             <h2>Add Quick Card</h2>
-            <form id="quick-card-form">
+            <form id="add-quick-card-form">
                 <label for="quick-card-label">Label:</label>
                 <input type="text" id="quick-card-label" name="quick-card-label" required>
 

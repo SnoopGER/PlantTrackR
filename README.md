@@ -1,93 +1,93 @@
-# Plant Manager App
+# PlantTrackR - Plant Management Application
 
-![Plant Manager Logo](logo_small.jpg)
+PlantTrackR is a comprehensive plant management application that helps users track their plants, manage growth phases, and maintain detailed records of plant care activities. The application features:
 
-## About
-
-The Plant Manager app is a web application designed to help users manage their plants. It provides tools for tracking watering schedules, plant care tips, and maintaining a catalog of your plant collection.
+- Plant tracking with detailed growth phases
+- Event management (watering, fertilizing, etc.)
+- Drag-and-drop Quick Card functionality
+- Calendar integration for event scheduling
+- Dark mode support
+- LocalStorage persistence
+- Responsive design
 
 ## Features
 
-- **Plant Catalog**: Keep track of all your plants with detailed information
-- **Watering Schedule**: Set and receive reminders for when to water your plants
-- **Care Instructions**: Store and view care tips for each plant species
-- **Responsive Design**: Works on mobile, tablet, and desktop devices
-- **Event Tracking**: Log and manage plant events (watering, fertilizing, etc.)
-- **Growth Phases**: Track plant development through different growth phases
-- **Archiving**: Archive plants that are no longer active
-- **Data Export**: Export your plant data as JSON
-- **Dark Mode**: Switch to dark mode for better visibility in low-light conditions
+### Plant Management
+- Track multiple plants with detailed information
+- Manage growth phases (Seedling, Mutter, Vegetative, Flowering, Drying, Curing)
+- Add and view events for each plant
+- Archive and unarchive plants
 
-## Files
+### Quick Cards
+- Create custom Quick Cards for common tasks
+- Drag-and-drop Quick Cards to plants for quick event logging
+- Customizable labels and icons
 
-- `index.html`: Main entry point of the application
-- `css/styles.css`: Stylesheet containing the app's design
-- `js/calendar.js`: JavaScript file handling calendar functionality
-- `js/main.js`: Main JavaScript file containing core app logic
+### Calendar
+- Interactive calendar for scheduling events
+- Month navigation
+- Day selection for event creation
+
+### User Interface
+- Clean, modern design with dark mode support
+- Responsive layout for various screen sizes
+- Intuitive plant card interface
+
+## Project Structure
+
+```
+src/
+├── css/
+│   ├── styles.css
+│   └── styles_new.css
+├── js/
+│   ├── calendar.js
+│   ├── main.js
+│   └── quickcards_final_complete.js
+├── index.html
+├── logo_small.jpg
+├── README.md
+└── server.log
+```
 
 ## Getting Started
 
-To use the Plant Manager app, simply open the `index.html` file in your web browser.
+1. Clone the repository
+2. Open `index.html` in a web browser
+3. Start adding plants and managing your garden!
 
-### Prerequisites
+## Usage Guide
 
-No special software is required. The app runs entirely in the browser and requires no installation.
+### Adding Plants
+1. Click on the "Add New Plant" form
+2. Enter the plant name and seed date
+3. Click "Add Plant" button
 
-### Installation
+### Managing Events
+1. Click on a plant card to select it
+2. Click "Add Event" button
+3. Enter event type (e.g., "Watered", "Fertilized")
+4. The event will be added to the selected plant
 
-1. Clone the repository or download the files
-2. Open `index.html` in any modern web browser
+### Using Quick Cards
+1. Click the "+" button in the Quick Cards sidebar
+2. Enter label, details, and optional icon
+3. Click "Save" to create the Quick Card
+4. Drag and drop Quick Cards onto plant cards
 
-## Usage
+### Calendar Integration
+1. Click on a day in the calendar
+2. Enter event type for the selected plant(s)
+3. The event will be added to the selected day
 
-1. **Add a Plant**: Click the "Add Plant" button to start tracking a new plant
-2. **Set Watering Schedule**: Configure how often each plant needs to be watered
-3. **View Care Tips**: Get plant-specific care instructions
-4. **Receive Reminders**: The app will notify you when it's time to water your plants
-5. **Track Growth**: Update and view plant growth phases
-6. **Archive Plants**: Move inactive plants to the archive section
-7. **Export Data**: Export your plant data for backup or transfer
+### Dark Mode
+1. Click the "🌙 Dark Mode umschalten" button
+2. The interface will toggle between light and dark modes
 
-## Customization
+## Contributing
 
-You can customize the app by modifying the following files:
-
-- `css/styles.css`: Change the styling and design of the app
-- `js/calendar.js`: Modify calendar-related functionality
-- `js/main.js`: Update core app logic and features
-
-## Code Documentation
-
-### JavaScript Files
-
-#### `js/main.js`
-- Contains the core logic for the Plant Manager application
-- Includes classes and functions for managing plants, handling events, and interacting with localStorage
-- Features:
-  - Plant tracking with name, seed date, and growth phases
-  - Event management (watering, fertilizing, etc.)
-  - LocalStorage persistence
-  - Archive functionality
-  - Data export/import
-
-#### `js/calendar.js`
-- Handles rendering and interaction with the calendar
-- Features:
-  - Monthly calendar view with navigation
-  - Day selection for adding events
-  - Integration with plant management system
-
-### CSS File
-
-#### `css/styles.css`
-- Contains the CSS styles for the Plant Manager application
-- Includes:
-  - Base styles for layout and typography
-  - Calendar component styling
-  - Plant card styling (main content elements)
-  - Dark mode styles
-  - Responsive design adjustments
+Contributions are welcome! Please submit pull requests or open issues for any bugs, features, or improvements.
 
 ## License
 
-This project is open-source and available under the MIT License.
+This project is licensed under the MIT License.
