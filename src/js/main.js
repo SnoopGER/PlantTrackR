@@ -119,15 +119,25 @@ document.addEventListener('DOMContentLoaded', function() {
  * @param {string} name - The name of the plant
  * @param {string} seedDate - The seed date in YYYY-MM-DD format
  * @param {string} [id] - Optional plant ID (will be generated if not provided)
+ * @param {string} [strain] - The strain of the plant (e.g., "Blue Dream", "Northern Lights")
+ * @param {string} [growMedium] - The grow medium (e.g., "Soil", "Hydroponics", "Coco")
+ * @param {string} [lightCycle] - The light cycle (e.g., "18/6", "12/12")
+ * @param {string} [nutrientSchedule] - The nutrient schedule (e.g., "General Hydroponics", "Advanced Nutrients")
  * @description Represents a plant with name, seed date, growth phase, events, and unique ID
  */
 class Plant {
-    constructor(name, seedDate, id) {
+    constructor(name, seedDate, id, strain, growMedium, lightCycle, nutrientSchedule) {
         this.name = name;
         this.seedDate = seedDate;
+        this.strain = strain || '';
+        this.growMedium = growMedium || '';
+        this.lightCycle = lightCycle || '';
+        this.nutrientSchedule = nutrientSchedule || '';
         this.events = [];
         this.phase = PLANT_PHASES[0]; // Default to first phase
         this.id = id || generateUUID(); // Assign ID, generate new one if not provided
+        this.heightData = []; // Array to store height measurements: [{date: 'YYYY-MM-DD', height: number}]
+        this.weightData = []; // Array to store weight measurements: [{date: 'YYYY-MM-DD', weight: number}]
     }
 
     /**
@@ -154,6 +164,30 @@ class Plant {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Add height measurement
+     * @param {number} height - Height in centimeters
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Object} The height measurement object that was added
+     */
+    addHeightMeasurement(height, date) {
+        const measurement = { height, date };
+        this.heightData.push(measurement);
+        return measurement;
+    }
+
+    /**
+     * Add weight measurement
+     * @param {number} weight - Weight in grams
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Object} The weight measurement object that was added
+     */
+    addWeightMeasurement(weight, date) {
+        const measurement = { weight, date };
+        this.weightData.push(measurement);
+        return measurement;
     }
 
     /**
@@ -237,7 +271,15 @@ class PlantManager {
                 try {
                     this.plants = JSON.parse(storedPlants).map(p => {
                         try {
-                            const plant = new Plant(p.name, p.seedDate, p.id); // Pass ID if available
+                            const plant = new Plant(
+                                p.name,
+                                p.seedDate,
+                                p.id,
+                                p.strain || '',
+                                p.growMedium || '',
+                                p.lightCycle || '',
+                                p.nutrientSchedule || ''
+                            ); // Pass ID if available
                             // Ensure events are properly deserialized
                             if (p.events && Array.isArray(p.events)) {
                                 plant.events = p.events;
@@ -245,6 +287,13 @@ class PlantManager {
                             // Set phase if available (phase is set after construction to avoid default override)
                             if (p.phase) {
                                 plant.phase = p.phase;
+                            }
+                            // Deserialize height and weight data if available
+                            if (p.heightData && Array.isArray(p.heightData)) {
+                                plant.heightData = p.heightData;
+                            }
+                            if (p.weightData && Array.isArray(p.weightData)) {
+                                plant.weightData = p.weightData;
                             }
                             return plant;
                         } catch (plantError) {
@@ -295,43 +344,47 @@ class PlantManager {
      * Add a new plant to the collection
      * @param {string} name - Name of the plant
      * @param {string} seedDate - Seed date in YYYY-MM-DD format
+     * @param {string} [strain] - The strain of the plant (e.g., "Blue Dream", "Northern Lights")
+     * @param {string} [growMedium] - The grow medium (e.g., "Soil", "Hydroponics", "Coco")
+     * @param {string} [lightCycle] - The light cycle (e.g., "18/6", "12/12")
+     * @param {string} [nutrientSchedule] - The nutrient schedule (e.g., "General Hydroponics", "Advanced Nutrients")
      * @returns {boolean} True if plant was added, false otherwise
      * @description Creates a new plant and adds it to the collection
      */
-    addPlant(name, seedDate) {
+    addPlant(name, seedDate, strain, growMedium, lightCycle, nutrientSchedule) {
         if (!name || !seedDate) {
             alert('Please provide both plant name and seed date.');
             return false;
         }
-    
+
         // Validate the date format
         const parsedDate = this.parseDate(seedDate);
         if (!parsedDate) {
             alert('Invalid date format. Please use YYYY-MM-DD.');
             return false;
         }
-    
-        const newPlant = new Plant(name, seedDate); // ID is automatically generated
+
+        const newPlant = new Plant(name, seedDate, null, strain, growMedium, lightCycle, nutrientSchedule); // ID is automatically generated
         // Initialize expanded state for the new plant (default to collapsed)
         this.expandedEvents[newPlant.id] = false;
-    
+
         this.plants.push(newPlant);
-    
+
         // Save to localStorage
         localStorage.setItem('plants', JSON.stringify(this.plants));
         localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
-    
+
         // Update UI
         this.renderPlants();
-    
+
         // Add the new plant to the selectedPlants set if it was just added via multi-selection
         // This allows for adding multiple plants and having them selected immediately
         if (this.selectedPlants.size > 0) {
             this.selectedPlants.add(newPlant.id);
         }
-    
+
         return true;
-     }
+    }
 
     /**
      * Add an event to all selected plants
@@ -339,50 +392,142 @@ class PlantManager {
      * @param {string} date - Date of the event in YYYY-MM-DD format
      * @returns {number} Number of plants that had events added
      */
-      addEventToSelectedPlants(eventType, date) {
-          if (this.selectedPlants.size === 0) {
-              alert('No plants selected. Please select one or more plants first.');
-              return 0;
+       addEventToSelectedPlants(eventType, date) {
+           if (this.selectedPlants.size === 0) {
+               alert('No plants selected. Please select one or more plants first.');
+               return 0;
+           }
+
+           if (!eventType) {
+               alert('Please provide an event type.');
+               return 0;
+           }
+
+           // Validate the date format
+           const parsedDate = this.parseDate(date);
+           if (!parsedDate) {
+               alert('Invalid date format. Please use YYYY-MM-DD.');
+               return 0;
+           }
+
+           let eventCount = 0;
+
+          // Add event to each selected plant
+          this.plants.forEach(plant => {
+              if (this.selectedPlants.has(plant.id)) {
+                  plant.addEvent(eventType, date);
+                  eventCount++;
+              }
+          });
+
+          // Save updated plant data to localStorage
+          localStorage.setItem('plants', JSON.stringify(this.plants));
+
+          // Update UI to show new events
+          this.renderPlants();
+
+          // Show success message
+          alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'}`);
+
+          // Add a "Deselect All" button after adding events to multiple plants
+          if (eventCount > 1) {
+              this.addDeselectAllButton();
           }
 
-          if (!eventType) {
-              alert('Please provide an event type.');
-              return 0;
-          }
+          return eventCount;
+      }
 
-          // Validate the date format
-          const parsedDate = this.parseDate(date);
-          if (!parsedDate) {
-              alert('Invalid date format. Please use YYYY-MM-DD.');
-              return 0;
-          }
+    /**
+     * Add height measurement to all selected plants
+     * @param {number} height - Height in centimeters
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {number} Number of plants that had height measurements added
+     */
+    addHeightToSelectedPlants(height, date) {
+        if (this.selectedPlants.size === 0) {
+            alert('No plants selected. Please select one or more plants first.');
+            return 0;
+        }
 
-          let eventCount = 0;
+        if (isNaN(height) || height <= 0) {
+            alert('Please provide a valid height in centimeters.');
+            return 0;
+        }
 
-         // Add event to each selected plant
-         this.plants.forEach(plant => {
-             if (this.selectedPlants.has(plant.id)) {
-                 plant.addEvent(eventType, date);
-                 eventCount++;
-             }
-         });
+        // Validate the date format
+        const parsedDate = this.parseDate(date);
+        if (!parsedDate) {
+            alert('Invalid date format. Please use YYYY-MM-DD.');
+            return 0;
+        }
 
-         // Save updated plant data to localStorage
-         localStorage.setItem('plants', JSON.stringify(this.plants));
+        let heightCount = 0;
 
-         // Update UI to show new events
-         this.renderPlants();
+        // Add height measurement to each selected plant
+        this.plants.forEach(plant => {
+            if (this.selectedPlants.has(plant.id)) {
+                plant.addHeightMeasurement(height, date);
+                heightCount++;
+            }
+        });
 
-         // Show success message
-         alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'}`);
+        // Save updated plant data to localStorage
+        localStorage.setItem('plants', JSON.stringify(this.plants));
 
-         // Add a "Deselect All" button after adding events to multiple plants
-         if (eventCount > 1) {
-             this.addDeselectAllButton();
-         }
+        // Update UI to show new height measurements
+        this.renderPlants();
 
-         return eventCount;
-     }
+        // Show success message
+        alert(`Added height measurement to ${heightCount} ${heightCount === 1 ? 'plant' : 'plants'}`);
+
+        return heightCount;
+    }
+
+    /**
+     * Add weight measurement to all selected plants
+     * @param {number} weight - Weight in grams
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {number} Number of plants that had weight measurements added
+     */
+    addWeightToSelectedPlants(weight, date) {
+        if (this.selectedPlants.size === 0) {
+            alert('No plants selected. Please select one or more plants first.');
+            return 0;
+        }
+
+        if (isNaN(weight) || weight <= 0) {
+            alert('Please provide a valid weight in grams.');
+            return 0;
+        }
+
+        // Validate the date format
+        const parsedDate = this.parseDate(date);
+        if (!parsedDate) {
+            alert('Invalid date format. Please use YYYY-MM-DD.');
+            return 0;
+        }
+
+        let weightCount = 0;
+
+        // Add weight measurement to each selected plant
+        this.plants.forEach(plant => {
+            if (this.selectedPlants.has(plant.id)) {
+                plant.addWeightMeasurement(weight, date);
+                weightCount++;
+            }
+        });
+
+        // Save updated plant data to localStorage
+        localStorage.setItem('plants', JSON.stringify(this.plants));
+
+        // Update UI to show new weight measurements
+        this.renderPlants();
+
+        // Show success message
+        alert(`Added weight measurement to ${weightCount} ${weightCount === 1 ? 'plant' : 'plants'}`);
+
+        return weightCount;
+    }
 
     /**
      * Parse date string and validate format
@@ -406,6 +551,129 @@ class PlantManager {
     }
 
     /**
+     * Render growth charts for a plant
+     * @param {Plant} plant - The plant to render charts for
+     * @param {string} plantId - The plant's ID
+     */
+    renderGrowthCharts(plant, plantId) {
+        // Render height chart
+        const heightChart = document.getElementById(`height-chart-${plantId}`);
+        if (heightChart) {
+            heightChart.innerHTML = '';
+
+            if (plant.heightData.length > 0) {
+                // Create a simple line chart for height data
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 100;
+                heightChart.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+
+                // Set up chart
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#007bff';
+                ctx.lineWidth = 2;
+
+                // Draw height data
+                const maxHeight = Math.max(...plant.heightData.map(d => d.height));
+                const days = plant.heightData.map((d, i) => i);
+
+                // Draw x-axis
+                ctx.beginPath();
+                ctx.moveTo(10, canvas.height - 10);
+                ctx.lineTo(canvas.width - 10, canvas.height - 10);
+                ctx.stroke();
+
+                // Draw y-axis
+                ctx.beginPath();
+                ctx.moveTo(10, canvas.height - 10);
+                ctx.lineTo(10, 10);
+                ctx.stroke();
+
+                // Draw data points and line
+                ctx.beginPath();
+                ctx.moveTo(10 + days[0] * ((canvas.width - 20) / days.length), canvas.height - 10 - (plant.heightData[0].height / maxHeight) * (canvas.height - 20));
+
+                for (let i = 1; i < plant.heightData.length; i++) {
+                    const x = 10 + days[i] * ((canvas.width - 20) / days.length);
+                    const y = canvas.height - 10 - (plant.heightData[i].height / maxHeight) * (canvas.height - 20);
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.stroke();
+
+                // Add labels
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.fillText('Height (cm)', 10, 15);
+                ctx.fillText('Days', canvas.width - 30, canvas.height - 5);
+            } else {
+                heightChart.innerHTML = '<p>No height data yet.</p>';
+            }
+        }
+
+        // Render weight chart
+        const weightChart = document.getElementById(`weight-chart-${plantId}`);
+        if (weightChart) {
+            weightChart.innerHTML = '';
+
+            if (plant.weightData.length > 0) {
+                // Create a simple line chart for weight data
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 100;
+                weightChart.appendChild(canvas);
+
+                const ctx = canvas.getContext('2d');
+
+                // Set up chart
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#28a745';
+                ctx.lineWidth = 2;
+
+                // Draw weight data
+                const maxWeight = Math.max(...plant.weightData.map(d => d.weight));
+                const days = plant.weightData.map((d, i) => i);
+
+                // Draw x-axis
+                ctx.beginPath();
+                ctx.moveTo(10, canvas.height - 10);
+                ctx.lineTo(canvas.width - 10, canvas.height - 10);
+                ctx.stroke();
+
+                // Draw y-axis
+                ctx.beginPath();
+                ctx.moveTo(10, canvas.height - 10);
+                ctx.lineTo(10, 10);
+                ctx.stroke();
+
+                // Draw data points and line
+                ctx.beginPath();
+                ctx.moveTo(10 + days[0] * ((canvas.width - 20) / days.length), canvas.height - 10 - (plant.weightData[0].weight / maxWeight) * (canvas.height - 20));
+
+                for (let i = 1; i < plant.weightData.length; i++) {
+                    const x = 10 + days[i] * ((canvas.width - 20) / days.length);
+                    const y = canvas.height - 10 - (plant.weightData[i].weight / maxWeight) * (canvas.height - 20);
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.stroke();
+
+                // Add labels
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.fillText('Weight (g)', 10, 15);
+                ctx.fillText('Days', canvas.width - 30, canvas.height - 5);
+            } else {
+                weightChart.innerHTML = '<p>No weight data yet.</p>';
+            }
+        }
+    }
+
+    /**
      * Setup event listeners for the document
      */
     setupEventListeners() {
@@ -413,11 +681,19 @@ class PlantManager {
         document.getElementById('addPlantFinalBtn').addEventListener('click', () => {
             const plantName = document.getElementById('plantNameInput').value;
             const plantSeedDate = document.getElementById('plantSeedDateInput').value;
+            const plantStrain = document.getElementById('plantStrainInput').value || '';
+            const plantGrowMedium = document.getElementById('plantGrowMediumInput').value || '';
+            const plantLightCycle = document.getElementById('plantLightCycleInput').value || '';
+            const plantNutrientSchedule = document.getElementById('plantNutrientScheduleInput').value || '';
 
-            if (this.addPlant(plantName, plantSeedDate)) {
+            if (this.addPlant(plantName, plantSeedDate, plantStrain, plantGrowMedium, plantLightCycle, plantNutrientSchedule)) {
                 // Clear input fields after successful addition
                 document.getElementById('plantNameInput').value = '';
                 document.getElementById('plantSeedDateInput').value = '';
+                document.getElementById('plantStrainInput').value = '';
+                document.getElementById('plantGrowMediumInput').value = '';
+                document.getElementById('plantLightCycleInput').value = '';
+                document.getElementById('plantNutrientScheduleInput').value = '';
             }
         });
 
@@ -433,6 +709,31 @@ class PlantManager {
             URL.revokeObjectURL(url);
         });
 
+        // Import data button
+        document.getElementById('import-data-btn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const jsonStr = e.target.result;
+                            if (this.importPlants(jsonStr)) {
+                                alert('Plants imported successfully!');
+                            }
+                        } catch (error) {
+                            alert('Error importing plants: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            input.click();
+        });
+
         // Add events to selected plants button
         document.getElementById('add-events-to-selected-btn').addEventListener('click', () => {
             const eventType = prompt('Enter event type (e.g., Watered, Fertilized):');
@@ -442,6 +743,44 @@ class PlantManager {
                 this.addEventToSelectedPlants(eventType, eventDate);
             }
         });
+
+        // Add height to selected plants button
+        const addHeightToSelectedBtn = document.createElement('button');
+        addHeightToSelectedBtn.id = 'add-height-to-selected-btn';
+        addHeightToSelectedBtn.innerHTML = '<span>📏</span> Add Height to Selected';
+        addHeightToSelectedBtn.addEventListener('click', () => {
+            const height = prompt('Enter height in centimeters:');
+            if (height !== null) {
+                const heightNum = parseFloat(height);
+                if (!isNaN(heightNum) && heightNum > 0) {
+                    const today = new Date();
+                    const heightDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    this.addHeightToSelectedPlants(heightNum, heightDate);
+                } else {
+                    alert('Please enter a valid height in centimeters.');
+                }
+            }
+        });
+        document.getElementById('add-plant-form').appendChild(addHeightToSelectedBtn);
+
+        // Add weight to selected plants button
+        const addWeightToSelectedBtn = document.createElement('button');
+        addWeightToSelectedBtn.id = 'add-weight-to-selected-btn';
+        addWeightToSelectedBtn.innerHTML = '<span>🏋️</span> Add Weight to Selected';
+        addWeightToSelectedBtn.addEventListener('click', () => {
+            const weight = prompt('Enter weight in grams:');
+            if (weight !== null) {
+                const weightNum = parseFloat(weight);
+                if (!isNaN(weightNum) && weightNum > 0) {
+                    const today = new Date();
+                    const weightDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    this.addWeightToSelectedPlants(weightNum, weightDate);
+                } else {
+                    alert('Please enter a valid weight in grams.');
+                }
+            }
+        });
+        document.getElementById('add-plant-form').appendChild(addWeightToSelectedBtn);
 
         // Clear selection button
         document.getElementById('clear-selection-btn').addEventListener('click', () => {
@@ -526,12 +865,27 @@ class PlantManager {
             this.expandedEvents = {};
 
             this.plants = importedPlants.map(p => {
-                const plant = new Plant(p.name, p.seedDate, p.id);
+                const plant = new Plant(
+                    p.name,
+                    p.seedDate,
+                    p.id,
+                    p.strain || '',
+                    p.growMedium || '',
+                    p.lightCycle || '',
+                    p.nutrientSchedule || ''
+                );
                 if (p.events && Array.isArray(p.events)) {
                     plant.events = p.events;
                 }
                 if (p.phase) {
                     plant.phase = p.phase;
+                }
+                // Deserialize height and weight data if available
+                if (p.heightData && Array.isArray(p.heightData)) {
+                    plant.heightData = p.heightData;
+                }
+                if (p.weightData && Array.isArray(p.weightData)) {
+                    plant.weightData = p.weightData;
                 }
                 return plant;
             });
@@ -589,6 +943,25 @@ class PlantManager {
             localStorage.setItem('plants', JSON.stringify(this.plants));
             localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
             this.renderPlants();
+            this.renderArchivedPlants();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Delete an archived plant
+     * @param {number} index - Index of the archived plant to delete
+     * @returns {boolean} True if plant was deleted, false otherwise
+     */
+    deleteArchivedPlant(index) {
+        if (index >= 0 && index < this.archivedPlants.length) {
+            const deletedPlant = this.archivedPlants.splice(index, 1)[0];
+            // Remove the expanded state for this plant when it's deleted
+            delete this.expandedEvents[deletedPlant.id];
+            localStorage.setItem('expandedEvents', JSON.stringify(this.expandedEvents));
+
+            localStorage.setItem('archivedPlants', JSON.stringify(this.archivedPlants));
             this.renderArchivedPlants();
             return true;
         }
@@ -663,9 +1036,27 @@ class PlantManager {
                     <button class="edit-name-btn" data-plant-id="${plant.id}">✏️</button>
                     <p>Seed Date: ${plant.seedDate}</p>
                 </div>
+                <div class="plant-details">
+                    <p><strong>Strain:</strong> ${plant.strain || 'Not specified'}</p>
+                    <p><strong>Grow Medium:</strong> ${plant.growMedium || 'Not specified'}</p>
+                    <p><strong>Light Cycle:</strong> ${plant.lightCycle || 'Not specified'}</p>
+                    <p><strong>Nutrient Schedule:</strong> ${plant.nutrientSchedule || 'Not specified'}</p>
+                </div>
                 <div class="phase-control">
                     <label>Phase:</label>
                     <button class="phase-btn phase-btn-${plant.phase.toLowerCase().replace(' ', '-')}">${plant.phase}</button>
+                </div>
+                <div class="growth-tracking">
+                    <div class="height-tracking">
+                        <h4>Height Tracking</h4>
+                        <div id="height-chart-${plant.id}" class="height-chart"></div>
+                        <button class="add-height-btn" data-plant-id="${plant.id}">Add Height</button>
+                    </div>
+                    <div class="weight-tracking">
+                        <h4>Weight Tracking</h4>
+                        <div id="weight-chart-${plant.id}" class="weight-chart"></div>
+                        <button class="add-weight-btn" data-plant-id="${plant.id}">Add Weight</button>
+                    </div>
                 </div>
                 <div class="card-actions">
                     <button class="archive-btn">Archive</button>
@@ -709,6 +1100,7 @@ class PlantManager {
             const addEventBtn = document.createElement('button');
             addEventBtn.className = 'add-event-btn';
             addEventBtn.innerHTML = '<span>📅</span> Add Event';
+            addEventBtn.setAttribute('tooltip', 'Add an event to this plant');
             addEventBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 // Handle add event functionality
@@ -781,10 +1173,67 @@ class PlantManager {
                 }
             });
 
+            // Add Height button
+            const addHeightBtn = plantCard.querySelector('.add-height-btn');
+            addHeightBtn.setAttribute('tooltip', 'Add height measurement');
+            addHeightBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const height = prompt('Enter height in centimeters:');
+                if (height !== null) {
+                    const heightNum = parseFloat(height);
+                    if (!isNaN(heightNum) && heightNum > 0) {
+                        const today = new Date();
+                        const heightDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+                        // Add height measurement to this plant
+                        plant.addHeightMeasurement(heightNum, heightDate);
+
+                        // Save updated plant data to localStorage
+                        localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                        // Render plants to update the UI with the new height measurement
+                        this.renderPlants();
+
+                        alert(`Added height measurement for ${plant.name}`);
+                    } else {
+                        alert('Please enter a valid height in centimeters.');
+                    }
+                }
+            });
+
+            // Add Weight button
+            const addWeightBtn = plantCard.querySelector('.add-weight-btn');
+            addWeightBtn.setAttribute('tooltip', 'Add weight measurement');
+            addWeightBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const weight = prompt('Enter weight in grams:');
+                if (weight !== null) {
+                    const weightNum = parseFloat(weight);
+                    if (!isNaN(weightNum) && weightNum > 0) {
+                        const today = new Date();
+                        const weightDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+
+                        // Add weight measurement to this plant
+                        plant.addWeightMeasurement(weightNum, weightDate);
+
+                        // Save updated plant data to localStorage
+                        localStorage.setItem('plants', JSON.stringify(this.plants));
+
+                        // Render plants to update the UI with the new weight measurement
+                        this.renderPlants();
+
+                        alert(`Added weight measurement for ${plant.name}`);
+                    } else {
+                        alert('Please enter a valid weight in grams.');
+                    }
+                }
+            });
+
             // Delete button
             const deleteBtn = document.createElement('button');
             deleteBtn.className = 'delete-btn';
             deleteBtn.innerHTML = '<span>🗑️</span> Delete';
+            deleteBtn.setAttribute('tooltip', 'Delete this plant');
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (confirm(`Are you sure you want to delete ${plant.name}?`)) {
@@ -876,6 +1325,9 @@ class PlantManager {
                 this.archivePlant(index);
             });
             actionsDiv.appendChild(newArchiveBtn);
+
+            // Render growth charts after the plant card is created
+            this.renderGrowthCharts(plant, plant.id);
 
             // Add drop-zone class for drag-and-drop functionality
             plantCard.classList.add('drop-zone');
@@ -1013,6 +1465,7 @@ class PlantManager {
             // Archive button functionality
             const archiveBtn = plantCard.querySelector('.archive-btn');
             archiveBtn.innerHTML = '<span>✏️</span> Archive';
+            archiveBtn.setAttribute('tooltip', 'Archive this plant');
             archiveBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.archivePlant(index);
@@ -1054,6 +1507,21 @@ class PlantManager {
                 e.stopPropagation();
                 this.unarchivePlant(index);
             });
+
+            // Delete button functionality
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-archived-btn';
+            deleteBtn.innerHTML = 'Delete';
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (confirm(`Are you sure you want to permanently delete ${plant.name}?`)) {
+                    this.deleteArchivedPlant(index);
+                }
+            });
+
+            // Add delete button to actions div
+            const actionsDiv = archivedPlant.querySelector('.card-actions');
+            actionsDiv.appendChild(deleteBtn);
 
             archivedPlantsDiv.appendChild(archivedPlant);
         });

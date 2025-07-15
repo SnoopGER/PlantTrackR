@@ -6,6 +6,7 @@
  * - Drag-and-drop functionality
  * - Integration with plant events
  */
+import { dataUtils } from './dataUtils.js';
 
 class QuickCard {
     constructor(label, inputDetails, icon = '📝') {
@@ -81,7 +82,7 @@ class QuickCardManager {
     initStorage() {
         // Initialize localStorage if needed
         if (!localStorage.getItem('quickCards')) {
-            localStorage.setItem('quickCards', JSON.stringify([]));
+            dataUtils.optimizedStorage.setItem('quickCards', []);
         }
     }
 
@@ -90,11 +91,11 @@ class QuickCardManager {
      */
     loadQuickCards() {
         try {
-            const storedQuickCards = localStorage.getItem('quickCards');
+            const storedQuickCards = dataUtils.optimizedStorage.getItem('quickCards');
             console.log('Loaded QuickCards from storage:', storedQuickCards);
             if (storedQuickCards) {
                 try {
-                    this.quickCards = JSON.parse(storedQuickCards).map(q => {
+                    this.quickCards = storedQuickCards.map(q => {
                         try {
                             const quickCard = new QuickCard(q.label, q.inputDetails, q.icon);
                             quickCard.id = q.id;
@@ -130,23 +131,23 @@ class QuickCardManager {
             alert('Please provide both label and input details.');
             return false;
         }
-    
+
         // Check if a QuickCard with the same label and content already exists
         const existingQuickCard = this.quickCards.find(q => q.label === label && q.inputDetails === inputDetails);
         if (existingQuickCard) {
             alert('A QuickCard with the same label and content already exists.');
             return false;
         }
-    
+
         const newQuickCard = new QuickCard(label, inputDetails, icon);
         this.quickCards.push(newQuickCard);
-    
-        // Save to localStorage
-        localStorage.setItem('quickCards', JSON.stringify(this.quickCards));
-    
+
+        // Save to localStorage using optimized storage
+        dataUtils.optimizedStorage.setItem('quickCards', this.quickCards);
+
         // Update UI
         this.renderQuickCards();
-    
+
         return true;
     }
 
@@ -266,170 +267,4 @@ class QuickCardManager {
      * Save QuickCards to localStorage
      */
     saveQuickCards() {
-        localStorage.setItem('quickCards', JSON.stringify(this.quickCards));
-    }
-
-    /**
-     * Log QuickCard event to plant
-     * @param {string} plantId - The ID of the plant
-     * @param {Object} quickCardData - The QuickCard data
-     */
-    logQuickCardToPlant(plantId, quickCardData) {
-        console.log(`logQuickCardToPlant called for plantId: ${plantId}, quickCardData:`, quickCardData);
-        console.log('PlantManager instance:', window.plantManager);
-        console.log('PlantManager plants:', window.plantManager ? window.plantManager.plants : 'PlantManager not available');
-
-        // Get the plant from PlantManager instance
-        const plantManager = window.plantManager;
-        const plant = plantManager.plants.find(p => p.id === plantId);
-
-        if (plant) {
-            console.log(`Found plant ${plantId}: ${plant.name}`);
-
-            // Check if the event already exists to prevent duplicates
-            const today = new Date();
-            const eventDate = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-            const existingEvent = plant.events.find(event =>
-                event.type === quickCardData.label && event.date === eventDate
-            );
-
-            if (!existingEvent) {
-                // Add the event using the Plant class's addEvent method
-                plant.addEvent(quickCardData.label, eventDate);
-
-                console.log(`Added event to plant ${plantId}: ${quickCardData.label}`);
-
-                // Save updated plant data to localStorage
-                localStorage.setItem('plants', JSON.stringify(plantManager.plants));
-
-                // Update UI using PlantManager's renderPlants method to preserve UI state
-                plantManager.renderPlants();
-            } else {
-                console.log(`Event already exists for plant ${plantId}: ${quickCardData.label} on ${eventDate}`);
-            }
-        } else {
-            console.error(`Plant with ID ${plantId} not found`);
-            console.error('Available plant IDs:', plantManager.plants.map(p => p.id));
-        }
-    }
-
-    /**
-     * Show the add quick card modal
-     */
-    showAddQuickCardModal() {
-        const modal = document.getElementById('add-quick-card-modal');
-        if (modal) {
-            modal.style.display = 'block';
-        } else {
-            console.error('Add QuickCard modal not found');
-        }
-    }
-
-    /**
-     * Hide the add quick card modal
-     */
-    hideAddQuickCardModal() {
-        const modal = document.getElementById('add-quick-card-modal');
-        if (modal) {
-            modal.style.display = 'none';
-        } else {
-            console.error('Add QuickCard modal not found');
-        }
-    }
-
-    /**
-     * Setup event listeners for the modal
-     */
-    setupModalEventListeners() {
-        const addQuickCardForm = document.getElementById('add-quick-card-form');
-        if (addQuickCardForm) {
-            addQuickCardForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const label = document.getElementById('quick-card-label').value;
-                const inputDetails = document.getElementById('quick-card-details').value;
-                const icon = document.getElementById('quick-card-icon').value || '📝';
-    
-                if (this.addQuickCard(label, inputDetails, icon)) {
-                    this.hideAddQuickCardModal();
-                }
-            });
-        }
-    
-        // Close modal when clicking outside
-        const modal = document.getElementById('add-quick-card-modal');
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    this.hideAddQuickCardModal();
-                }
-            });
-        }
-    }
-
-    /**
-     * Setup event listeners for the main functionality
-     */
-    setupEventListeners() {
-        // Add QuickCard button
-        const addQuickCardBtn = document.getElementById('add-quick-card-btn');
-        if (addQuickCardBtn) {
-            addQuickCardBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent event from bubbling up to avoid sidebar collapse
-                this.showAddQuickCardModal();
-            });
-        }
-
-        // Drag and drop functionality
-        const dropZones = document.querySelectorAll('.drop-zone');
-        console.log('Setting up drop zones:', dropZones);
-        dropZones.forEach(zone => {
-            console.log('Setting up drop zone:', zone, 'with plantId:', zone.dataset.plantId);
-
-            // Always attach event listeners to ensure they're present on dynamically created elements
-            // Use function references for event handlers to ensure they're only attached once
-            const handleDragOver = (e) => {
-                console.log('Drag over drop zone');
-                e.preventDefault();
-                zone.classList.add('dragover');
-            };
-
-            const handleDragLeave = () => {
-                console.log('Drag leave drop zone');
-                zone.classList.remove('dragover');
-            };
-
-            const handleDrop = (e) => {
-                console.log('Drop event on zone');
-                e.preventDefault();
-                zone.classList.remove('dragover');
-
-                const quickCardId = e.dataTransfer.getData('text/plain');
-                const quickCardData = JSON.parse(e.dataTransfer.getData('application/json'));
-
-                console.log('Drop event data - quickCardId:', quickCardId);
-                console.log('Drop event data - quickCardData:', quickCardData);
-                console.log('Drop zone plantId:', zone.dataset.plantId);
-
-                if (quickCardId && quickCardData) {
-                    console.log(`Dropped QuickCard ${quickCardId} on zone: ${zone.id}`);
-                    // Handle the drop action (e.g., log to plant)
-                    this.logQuickCardToPlant(zone.dataset.plantId, quickCardData);
-                } else {
-                    console.error('Invalid QuickCard data in drop event');
-                }
-            };
-
-            // Add event listeners
-            zone.addEventListener('dragover', handleDragOver);
-            zone.addEventListener('dragleave', handleDragLeave);
-            zone.addEventListener('drop', handleDrop);
-        });
-    }
-}
-
-// Initialize the QuickCardManager when the DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    const quickCardManager = QuickCardManager.getInstance();
-    quickCardManager.setupEventListeners();
-    quickCardManager.setupModalEventListeners();
-});
+        dataUtils.optimizedStorage
