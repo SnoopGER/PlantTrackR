@@ -630,13 +630,20 @@ class PlantManager {
         if (parts.length !== 3) return null;
         const [year, month, day] = parts;
         if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+
+        // Create a Date object directly in local timezone
+        // This ensures consistent handling without UTC conversion
         const date = new Date(year, month - 1, day);
+
         // Validate the date (handle invalid dates like February 30)
+        // Check local date components for accuracy
         if (date.getFullYear() !== parseInt(year) ||
             date.getMonth() !== parseInt(month) - 1 ||
             date.getDate() !== parseInt(day)) {
             return null;
         }
+
+        // Return the local date object
         return date;
     }
 

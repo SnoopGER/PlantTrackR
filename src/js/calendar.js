@@ -18,15 +18,6 @@
  * - selectDay(day): Handles day selection and event creation
  */
 
-/**
- * Calendar Class - Handles rendering and interaction with the calendar
- *
- * This file contains the Calendar class which manages the calendar functionality
- * within the Plant Manager application. It handles:
- * - Rendering the calendar UI for the current month
- * - Day selection for adding events
- * - Integration with plant management system
- */
 class Calendar {
     constructor() {
         if (Calendar.instance) return Calendar.instance;
@@ -153,7 +144,15 @@ class Calendar {
      * @private
      */
     selectDay(day) {
-        const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+        // Create a new Date object for the selected day in the current month/year
+        // Create date directly in local time zone for consistent handling
+        // Use the current month/year from this.currentDate but ensure we're creating the date correctly
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth(); // Note: JavaScript months are 0-indexed (0-11)
+
+        // Create date directly in local time zone without any UTC conversion
+        // This ensures the date is created with the correct local time components
+        const date = new Date(year, month, day);
 
         // Get the PlantManager instance
         const plantManager = PlantManager.getInstance();
@@ -162,7 +161,13 @@ class Calendar {
         if (plantManager.selectedPlants.size > 1) {
             const eventType = prompt('Enter event type (water, fertilizer, etc.):');
             if (eventType) {
-                const eventDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+                // Format the date in local timezone as YYYY-MM-DD string
+                // Use the date object's local components directly
+                const localYear = date.getFullYear();
+                const localMonth = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                const localDay = String(date.getDate()).padStart(2, '0');
+                const eventDate = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD format
+
                 const eventCount = plantManager.addEventToSelectedPlants(eventType, eventDate);
                 this.renderCalendar();
                 alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'} on ${date.toDateString()}`);
@@ -171,7 +176,13 @@ class Calendar {
             // Single plant selected - use the same method as multiple plants for consistency
             const eventType = prompt('Enter event type (water, fertilizer, etc.):');
             if (eventType) {
-                const eventDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+                // Format the date in local timezone as YYYY-MM-DD string
+                // Use the date object's local components directly
+                const localYear = date.getFullYear();
+                const localMonth = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                const localDay = String(date.getDate()).padStart(2, '0');
+                const eventDate = `${localYear}-${localMonth}-${localDay}`; // YYYY-MM-DD format
+
                 const eventCount = plantManager.addEventToSelectedPlants(eventType, eventDate);
                 this.renderCalendar();
                 alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'} on ${date.toDateString()}`);
@@ -205,5 +216,4 @@ class Calendar {
             }
         }
     }
-
 }
