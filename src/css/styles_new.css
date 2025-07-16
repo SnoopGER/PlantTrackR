@@ -891,10 +891,16 @@ body.dark-mode .tab-btn.active {
     gap: 8px;
 }
 
-.height-tracking h4, .weight-tracking h4 {
+.height-tracking h4 {
     margin: 0;
     color: #333;
     font-size: 1em;
+}
+
+.weight-tracking h4 {
+    margin: 0;
+    color: #333;
+    font-size: 0.9em; /* Reduced size to prevent line breaking */
 }
 
 .height-chart, .weight-chart {
