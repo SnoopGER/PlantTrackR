@@ -131,10 +131,9 @@ class QuickCardManager {
             return false;
         }
     
-        // Check if a QuickCard with the same label and content already exists
-        const existingQuickCard = this.quickCards.find(q => q.label === label && q.inputDetails === inputDetails);
+        // Check if a QuickCard with the same label already exists (excluding icon)
+        const existingQuickCard = this.quickCards.find(q => q.label === label);
         if (existingQuickCard) {
-            alert('A QuickCard with the same label and content already exists.');
             return false;
         }
     
@@ -351,6 +350,8 @@ class QuickCardManager {
     
                 if (this.addQuickCard(label, inputDetails, icon)) {
                     this.hideAddQuickCardModal();
+                    // Refresh the page after successfully adding a quick card
+                    window.location.reload();
                 }
             });
         }

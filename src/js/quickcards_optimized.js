@@ -132,10 +132,9 @@ class QuickCardManager {
             return false;
         }
 
-        // Check if a QuickCard with the same label and content already exists
-        const existingQuickCard = this.quickCards.find(q => q.label === label && q.inputDetails === inputDetails);
+        // Check if a QuickCard with the same label already exists (excluding icon)
+        const existingQuickCard = this.quickCards.find(q => q.label === label);
         if (existingQuickCard) {
-            alert('A QuickCard with the same label and content already exists.');
             return false;
         }
 
@@ -264,7 +263,49 @@ class QuickCardManager {
     }
 
     /**
+     * Setup event listeners for the modal
+     */
+    setupModalEventListeners() {
+        if (addQuickCardForm) {
+            addQuickCardForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const label = document.getElementById('quick-card-label').value;
+                const inputDetails = document.getElementById('quick-card-details').value;
+                const icon = document.getElementById('quick-card-icon').value || '📝';
+
+                if (this.addQuickCard(label, inputDetails, icon)) {
+                    this.hideAddQuickCardModal();
+                    // Refresh the page after successfully adding a quick card
+                    window.location.reload();
+                }
+            });
+        }
+
+        // Close modal when clicking outside
+        const modal = document.getElementById('add-quick-card-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.hideAddQuickCardModal();
+                }
+            });
+        }
+    }
+
+    /**
+     * Hide the add quick card modal
+     */
+    hideAddQuickCardModal() {
+        const modal = document.getElementById('add-quick-card-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    };
+
+    /**
      * Save QuickCards to localStorage
      */
     saveQuickCards() {
-        dataUtils.optimizedStorage
+        dataUtils.optimizedStorage.setItem('quickCards', this.quickCards);
+    };
+        var addQuickCardForm = document.getElementById('add-quick-card-form');

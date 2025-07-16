@@ -224,6 +224,7 @@ class PlantManager {
         this.initStorage();
         this.loadPlants();
         this.loadArchivedPlants();
+        this.loadSelectedPlants(); // Load selected plants from localStorage
 
         // Store bound functions for proper cleanup
         this.handleDocumentClick = this.handleDocumentClick.bind(this);
@@ -258,6 +259,10 @@ class PlantManager {
         // Initialize expandedEvents storage if needed
         if (!localStorage.getItem('expandedEvents')) {
             localStorage.setItem('expandedEvents', JSON.stringify({}));
+        }
+        // Initialize selectedPlants storage if needed
+        if (!localStorage.getItem('selectedPlants')) {
+            localStorage.setItem('selectedPlants', JSON.stringify([]));
         }
     }
 
@@ -323,6 +328,52 @@ class PlantManager {
     }
 
     /**
+     * Load selected plants from localStorage
+     */
+    loadSelectedPlants() {
+        try {
+            const storedSelectedPlants = localStorage.getItem('selectedPlants');
+            if (storedSelectedPlants) {
+                try {
+                    const selectedPlantIds = JSON.parse(storedSelectedPlants);
+                    this.selectedPlants = new Set(selectedPlantIds);
+                    // Update UI to reflect the loaded selection state
+                    this.updateSelectionUI();
+                } catch (parseError) {
+                    console.error('Error parsing selected plants from localStorage:', parseError);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading selected plants:', error);
+        }
+    }
+
+    /**
+     * Save selected plants to localStorage
+     */
+    saveSelectedPlants() {
+        try {
+            localStorage.setItem('selectedPlants', JSON.stringify(Array.from(this.selectedPlants)));
+        } catch (error) {
+            console.error('Error saving selected plants to localStorage:', error);
+        }
+    }
+
+    /**
+     * Update UI to reflect current selection state
+     */
+    updateSelectionUI() {
+        document.querySelectorAll('.plant-card').forEach(card => {
+            const cardPlantId = card.dataset.plantId;
+            if (this.selectedPlants.has(cardPlantId)) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+    }
+
+    /**
      * Load archived plants from localStorage and render them
      */
     loadArchivedPlants() {
@@ -382,6 +433,9 @@ class PlantManager {
         if (this.selectedPlants.size > 0) {
             this.selectedPlants.add(newPlant.id);
         }
+
+        // Save selection state to localStorage
+        this.saveSelectedPlants();
 
         return true;
     }
@@ -1005,7 +1059,16 @@ class PlantManager {
             // Add selection functionality
             plantCard.addEventListener('click', (e) => {
                 // Prevent event from bubbling up when clicking on edit button or other child elements
-                if (e.target.classList.contains('edit-name-btn')) {
+                if (e.target.classList.contains('edit-name-btn') ||
+                    e.target.classList.contains('phase-btn') ||
+                    e.target.classList.contains('archive-btn') ||
+                    e.target.classList.contains('delete-btn') ||
+                    e.target.classList.contains('add-event-btn') ||
+                    e.target.classList.contains('add-height-btn') ||
+                    e.target.classList.contains('add-weight-btn') ||
+                    e.target.classList.contains('toggle-events-btn') ||
+                    e.target.classList.contains('edit-event-btn') ||
+                    e.target.classList.contains('delete-event-btn')) {
                     return;
                 }
 
@@ -1018,15 +1081,11 @@ class PlantManager {
                     plantCard.classList.add('selected');
                 }
 
+                // Save selection state to localStorage
+                this.saveSelectedPlants();
+
                 // Update UI to show selection state
-                document.querySelectorAll('.plant-card').forEach(card => {
-                    const cardPlantId = card.dataset.plantId;
-                    if (this.selectedPlants.has(cardPlantId)) {
-                        card.classList.add('selected');
-                    } else {
-                        card.classList.remove('selected');
-                    }
-                });
+                this.updateSelectionUI();
             });
 
             // Plant name and seed date with edit button
