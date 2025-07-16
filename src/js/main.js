@@ -1594,6 +1594,19 @@ class PlantManager {
             phaseBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 phaseMenu.style.display = phaseMenu.style.display === 'none' ? 'block' : 'none';
+
+                // Position the menu relative to the button
+                if (phaseMenu.style.display === 'block') {
+                    const btnRect = phaseBtn.getBoundingClientRect();
+                    const cardRect = plantCard.getBoundingClientRect();
+
+                    // Calculate position relative to the card
+                    const menuLeft = btnRect.left - cardRect.left;
+                    const menuTop = btnRect.bottom - cardRect.top + 8; // 8px margin
+
+                    phaseMenu.style.left = `${menuLeft}px`;
+                    phaseMenu.style.top = `${menuTop}px`;
+                }
             });
 
             // Add phase menu to card
