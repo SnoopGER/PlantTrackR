@@ -6,6 +6,16 @@
  * - Rendering the calendar UI for the current month
  * - Day selection for adding events
  * - Integration with plant management system
+ *
+ * Features:
+ * - Singleton pattern implementation
+ * - Current date tracking
+ * - Plant selection management
+ * - Event creation for selected plants
+ *
+ * Methods:
+ * - renderCalendar(): Renders the calendar UI
+ * - selectDay(day): Handles day selection and event creation
  */
 
 /**
@@ -33,6 +43,8 @@ class Calendar {
 
     /**
      * Render the calendar UI for the current month
+     * @description Renders the calendar UI for the current month with navigation controls
+     * @private
      */
     renderCalendar() {
         try {
@@ -137,6 +149,8 @@ class Calendar {
     /**
      * Handle day selection in the calendar
      * @param {number} day - Day of month to select
+     * @description Handles day selection and event creation for selected plants
+     * @private
      */
     selectDay(day) {
         const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
@@ -163,18 +177,30 @@ class Calendar {
                 alert(`Added ${eventType} event to ${eventCount} ${eventCount === 1 ? 'plant' : 'plants'} on ${date.toDateString()}`);
             }
         } else {
-            // If no plant is selected, prompt for plant name and find its ID
-            const plantName = prompt('Select a plant (enter name):');
-            if (plantName) {
-                const plant = plantManager.plants.find(p => p.name === plantName);
+            // If no plant is selected, show a list of plants with their IDs
+            const plantNames = plantManager.plants.map(p => `${p.id}: ${p.name}`);
+            const plantSelection = prompt('Select a plant (enter ID or name):\n' + plantNames.join('\n'));
+
+            if (plantSelection) {
+                // Try to find the plant by ID first (more reliable)
+                const plantById = plantManager.plants.find(p => p.id === plantSelection);
+                let plant;
+
+                // If not found by ID, try by name as fallback
+                if (!plantById) {
+                    plant = plantManager.plants.find(p => p.name === plantSelection);
+                } else {
+                    plant = plantById;
+                }
+
                 if (plant) {
                     // Set the selected plant using its ID
                     plantManager.selectedPlants.clear();
                     plantManager.selectedPlants.add(plant.id);
                     plantManager.renderPlants(); // Update UI to show selection
-                    alert(`Selected plant: ${plantName}. Click a day to add an event.`);
+                    alert(`Selected plant: ${plant.name} (ID: ${plant.id}). Click a day to add an event.`);
                 } else {
-                    alert(`Plant "${plantName}" not found.`);
+                    alert(`Plant "${plantSelection}" not found.`);
                 }
             }
         }

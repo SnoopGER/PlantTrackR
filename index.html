@@ -43,8 +43,22 @@
         </div>
 
         <!-- Plant list container - plant cards will be inserted here by JavaScript -->
-        <div id="plant-list">
-            <!-- Plant items will be added here -->
+        <div class="plant-tabs-container">
+            <!-- Tab navigation -->
+            <div id="plant-tabs">
+                <button class="tab-btn active" data-phase="all">ALL</button>
+                <button class="tab-btn" data-phase="seedling">Seedling</button>
+                <button class="tab-btn" data-phase="mutter">Mutter</button>
+                <button class="tab-btn" data-phase="vegetative">Vegetative</button>
+                <button class="tab-btn" data-phase="flowering">Flowering</button>
+                <button class="tab-btn" data-phase="drying">Drying</button>
+                <button class="tab-btn" data-phase="curing">Curing</button>
+                <button class="tab-btn" data-phase="harvested">Harvested</button>
+            </div>
+            <!-- Plant list - plant cards will be added here -->
+            <div id="plant-list">
+                <!-- Plant items will be added here -->
+            </div>
         </div>
     </div>
 
@@ -61,10 +75,10 @@
                 <input id="plantStrainInput" type="text" placeholder="e.g., Blue Dream, Northern Lights" tooltip="Enter the strain of your plant"/>
     
                 <label for="plantGrowMediumInput">Grow Medium:</label>
-                <input id="plantGrowMediumInput" type="text" placeholder="e.g., Soil, Hydroponics, Coco" tooltip="Enter the grow medium used"/>
+                <input id="plantGrowMediumInput" type="text" placeholder="e.g., Soil, Hydroponics, Coco, Erde" value="Erde" tooltip="Enter the grow medium used"/>
     
                 <label for="plantLightCycleInput">Light Cycle:</label>
-                <input id="plantLightCycleInput" type="text" placeholder="e.g., 18/6, 12/12" tooltip="Enter the light cycle (e.g., 18/6)"/>
+                <input id="plantLightCycleInput" type="text" placeholder="e.g., 18/6, 12/12" value="18/6" tooltip="Enter the light cycle (e.g., 18/6)"/>
     
                 <label for="plantNutrientScheduleInput">Nutrient Schedule:</label>
                 <input id="plantNutrientScheduleInput" type="text" placeholder="e.g., General Hydroponics, Advanced Nutrients" tooltip="Enter the nutrient schedule"/>
@@ -167,7 +181,18 @@
                 <input type="text" id="quick-card-details" name="quick-card-details" required>
 
                 <label for="quick-card-icon">Icon (optional):</label>
-                <input type="text" id="quick-card-icon" name="quick-card-icon" placeholder="📝">
+                <select id="quick-card-icon" name="quick-card-icon">
+                    <option value="📝">Notepad (📝)</option>
+                    <option value="💧">Water (💧)</option>
+                    <option value="🌱">Soil (🌱)</option>
+                    <option value="☀️">Sun (☀️)</option>
+                    <option value="🟡">Yellow (🟡)</option>
+                    <option value="🟥">Red (🟥)</option>
+                    <option value="🟦">Blue (🟦)</option>
+                    <option value="🟩">Green (🟩)</option>
+                    <option value="🟪">Purple (🟪)</option>
+                    <option value="">None</option>
+                </select>
 
                 <div class="modal-buttons">
                     <button type="submit" class="save-btn">Save</button>

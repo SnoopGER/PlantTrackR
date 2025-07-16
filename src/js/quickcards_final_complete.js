@@ -5,8 +5,31 @@
  * - Quick Card creation and storage
  * - Drag-and-drop functionality
  * - Integration with plant events
+ *
+ * Features:
+ * - Singleton pattern implementation for QuickCardManager
+ * - LocalStorage persistence
+ * - Drag-and-drop event handling
+ * - Plant event logging
+ *
+ * Classes:
+ * - QuickCard: Represents individual Quick Cards
+ * - QuickCardManager: Manages all Quick Cards and their functionality
  */
 
+/**
+ * Class representing a Quick Card
+ * @class
+ * @param {string} label - The label for the Quick Card
+ * @param {string} inputDetails - The input details for the Quick Card
+ * @param {string} [icon='📝'] - Optional icon for the Quick Card
+ * @description Represents a Quick Card with label, details, icon, and pinned state
+ * @property {string} id - Unique identifier for the Quick Card
+ * @property {string} label - The label for the Quick Card
+ * @property {string} inputDetails - The input details for the Quick Card
+ * @property {string} icon - The icon for the Quick Card
+ * @property {boolean} pinned - Indicates if the Quick Card is pinned
+ */
 class QuickCard {
     constructor(label, inputDetails, icon = '📝') {
         this.id = generateUUID();
@@ -48,6 +71,17 @@ class QuickCard {
  * - QuickCard rendering and UI management
  * - Drag-and-drop functionality
  * - Integration with plant management system
+ *
+ * Features:
+ * - Singleton pattern implementation
+ * - LocalStorage persistence
+ * - Drag-and-drop event handling
+ * - Plant event logging
+ *
+ * @class
+ * @singleton
+ * @property {Array} quickCards - Array of Quick Cards
+ * @property {Object|null} selectedQuickCard - Currently selected Quick Card
  */
 class QuickCardManager {
     constructor() {
@@ -77,6 +111,8 @@ class QuickCardManager {
 
     /**
      * Initialize localStorage if needed
+     * @description Initializes localStorage items if they don't exist
+     * @private
      */
     initStorage() {
         // Initialize localStorage if needed
@@ -87,6 +123,8 @@ class QuickCardManager {
 
     /**
      * Load QuickCards from localStorage and render them
+     * @description Loads QuickCard data from localStorage and renders the UI
+     * @private
      */
     loadQuickCards() {
         try {
@@ -122,35 +160,39 @@ class QuickCardManager {
      * Add a new QuickCard to the collection
      * @param {string} label - Label for the QuickCard
      * @param {string} inputDetails - Original input details
-     * @param {string} [icon] - Optional icon for the QuickCard
+     * @param {string} [icon='📝'] - Optional icon for the QuickCard
      * @returns {boolean} True if QuickCard was added, false otherwise
+     * @description Adds a new QuickCard to the collection and saves it to localStorage
+     * @private
      */
     addQuickCard(label, inputDetails, icon = '📝') {
         if (!label || !inputDetails) {
             alert('Please provide both label and input details.');
             return false;
         }
-    
+
         // Check if a QuickCard with the same label already exists (excluding icon)
         const existingQuickCard = this.quickCards.find(q => q.label === label);
         if (existingQuickCard) {
             return false;
         }
-    
+
         const newQuickCard = new QuickCard(label, inputDetails, icon);
         this.quickCards.push(newQuickCard);
-    
+
         // Save to localStorage
         localStorage.setItem('quickCards', JSON.stringify(this.quickCards));
-    
+
         // Update UI
         this.renderQuickCards();
-    
+
         return true;
     }
 
     /**
      * Render all QuickCards in the UI
+     * @description Renders all QuickCards in the UI with drag-and-drop functionality
+     * @private
      */
     renderQuickCards() {
         console.log('renderQuickCards called');
@@ -214,7 +256,7 @@ class QuickCardManager {
                     <span class="quick-card-label">${quickCard.label}</span>
                 </div>
                 <div class="quick-card-actions">
-                    ${quickCard.pinned ? '<button class="unpin-btn">📎</button>' : '<button class="pin-btn">📎</button>'}
+                    ${quickCard.pinned ? '<button class="unpin-btn">📌</button>' : '<button class="pin-btn">📌</button>'}
                     <button class="delete-btn">❌</button>
                 </div>
             `;
@@ -223,7 +265,6 @@ class QuickCardManager {
             const pinBtn = quickCardElement.querySelector('.pin-btn');
             const unpinBtn = quickCardElement.querySelector('.unpin-btn');
             if (pinBtn) {
-                pinBtn.setAttribute('tooltip', 'Pin this QuickCard to the top');
                 pinBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     quickCard.pinned = true;
@@ -232,7 +273,6 @@ class QuickCardManager {
                 });
             }
             if (unpinBtn) {
-                unpinBtn.setAttribute('tooltip', 'Unpin this QuickCard');
                 unpinBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     quickCard.pinned = false;
@@ -243,11 +283,11 @@ class QuickCardManager {
 
             // Delete button functionality
             const deleteBtn = quickCardElement.querySelector('.delete-btn');
-            deleteBtn.setAttribute('tooltip', 'Delete this QuickCard');
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (confirm('Are you sure you want to delete this QuickCard?')) {
-                    this.quickCards.splice(index, 1);
+                    // Find the card by ID instead of using index
+                    this.quickCards = this.quickCards.filter(card => card.id !== quickCard.id);
                     this.saveQuickCards();
                     this.renderQuickCards();
                 }
@@ -272,6 +312,8 @@ class QuickCardManager {
      * Log QuickCard event to plant
      * @param {string} plantId - The ID of the plant
      * @param {Object} quickCardData - The QuickCard data
+     * @description Logs a QuickCard event to the specified plant
+     * @private
      */
     logQuickCardToPlant(plantId, quickCardData) {
         console.log(`logQuickCardToPlant called for plantId: ${plantId}, quickCardData:`, quickCardData);
@@ -347,7 +389,7 @@ class QuickCardManager {
                 const label = document.getElementById('quick-card-label').value;
                 const inputDetails = document.getElementById('quick-card-details').value;
                 const icon = document.getElementById('quick-card-icon').value || '📝';
-    
+
                 if (this.addQuickCard(label, inputDetails, icon)) {
                     this.hideAddQuickCardModal();
                     // Refresh the page after successfully adding a quick card

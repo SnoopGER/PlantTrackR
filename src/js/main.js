@@ -11,12 +11,21 @@
  * - LocalStorage persistence
  * - Archive functionality
  * - Data export/import
+ *
+ * Classes:
+ * - Plant: Represents individual plants with properties and methods
+ * - PlantManager: Singleton class managing all plant operations
+ *
+ * Functions:
+ * - generateUUID(): Generates unique identifiers for plants
+ * - DOMContentLoaded event handler: Initializes the application
  */
 /**
  * Plant growth phases
  * @type {string[]}
  * @description Defines the different growth stages a plant can go through
- * Phases: Seedling, Mutter, Vegetative, Flowering, Drying, Curing
+ * Phases: Seedling, Mutter, Vegetative, Flowering, Drying, Curing, Harvested
+ * @constant
  */
 const PLANT_PHASES = [
     'Seedling',
@@ -24,7 +33,8 @@ const PLANT_PHASES = [
     'Vegetative',
     'Flowering',
     'Drying',
-    'Curing'
+    'Curing',
+    'Harvested'
 ];
 
 
@@ -124,6 +134,17 @@ document.addEventListener('DOMContentLoaded', function() {
  * @param {string} [lightCycle] - The light cycle (e.g., "18/6", "12/12")
  * @param {string} [nutrientSchedule] - The nutrient schedule (e.g., "General Hydroponics", "Advanced Nutrients")
  * @description Represents a plant with name, seed date, growth phase, events, and unique ID
+ * @property {string} name - The name of the plant
+ * @property {string} seedDate - The seed date in YYYY-MM-DD format
+ * @property {string} strain - The strain of the plant
+ * @property {string} growMedium - The grow medium
+ * @property {string} lightCycle - The light cycle
+ * @property {string} nutrientSchedule - The nutrient schedule
+ * @property {Array} events - Array of events for the plant
+ * @property {string} phase - Current growth phase
+ * @property {string} id - Unique identifier for the plant
+ * @property {Array} heightData - Array of height measurements
+ * @property {Array} weightData - Array of weight measurements
  */
 class Plant {
     constructor(name, seedDate, id, strain, growMedium, lightCycle, nutrientSchedule) {
@@ -208,6 +229,12 @@ class Plant {
  * Singleton class managing all plant operations
  * @class
  * @description Manages plant data, UI rendering, and interactions
+ * @singleton
+ * @property {Array} plants - Array of active plants
+ * @property {Array} archivedPlants - Array of archived plants
+ * @property {Set} selectedPlants - Set of selected plant IDs
+ * @property {Object} expandedEvents - Tracks which event sections are expanded
+ * @property {string} currentTab - Tracks current tab for filtering (all, seedling, mutter, etc.)
  */
 class PlantManager {
     constructor() {
@@ -219,6 +246,7 @@ class PlantManager {
         this.archivedPlants = [];
         this.selectedPlants = new Set(); // Track multiple selected plants using a Set of plant IDs
         this.expandedEvents = {}; // Track which event sections are expanded: {plantId: true/false}
+        this.currentTab = 'all'; // Track current tab for filtering (all, seedling, mutter, etc.)
 
         // Initialize storage and load data only once
         this.initStorage();
@@ -235,6 +263,9 @@ class PlantManager {
         // Attach PlantManager class to window object for global access
         window.PlantManager = PlantManager;
 
+        // Initialize tab navigation
+        this.setupTabNavigation();
+
         return this;
     }
 
@@ -247,6 +278,8 @@ class PlantManager {
 
     /**
      * Initialize localStorage if needed
+     * @description Initializes localStorage items if they don't exist
+     * @private
      */
     initStorage() {
         // Initialize localStorage if needed
@@ -371,6 +404,9 @@ class PlantManager {
                 card.classList.remove('selected');
             }
         });
+
+        // Save selection state to localStorage whenever UI is updated
+        this.saveSelectedPlants();
     }
 
     /**
@@ -728,6 +764,30 @@ class PlantManager {
     }
 
     /**
+     * Setup tab navigation and event listeners
+     */
+    setupTabNavigation() {
+        // Get all tab buttons
+        const tabButtons = document.querySelectorAll('#plant-tabs .tab-btn');
+        if (tabButtons.length > 0) {
+            // Set up click event listeners for each tab
+            tabButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Remove active class from all tabs
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    // Add active class to clicked tab
+                    button.classList.add('active');
+                    // Update current tab
+                    this.currentTab = button.dataset.phase;
+                    // Re-render plants with the new filter
+                    this.renderPlants();
+                });
+            });
+        }
+    }
+
+    /**
      * Setup event listeners for the document
      */
     setupEventListeners() {
@@ -743,11 +803,17 @@ class PlantManager {
             if (this.addPlant(plantName, plantSeedDate, plantStrain, plantGrowMedium, plantLightCycle, plantNutrientSchedule)) {
                 // Clear input fields after successful addition
                 document.getElementById('plantNameInput').value = '';
-                document.getElementById('plantSeedDateInput').value = '';
                 document.getElementById('plantStrainInput').value = '';
                 document.getElementById('plantGrowMediumInput').value = '';
                 document.getElementById('plantLightCycleInput').value = '';
                 document.getElementById('plantNutrientScheduleInput').value = '';
+
+                // Set current date as default value for seed date field
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+                const dd = String(today.getDate()).padStart(2, '0');
+                document.getElementById('plantSeedDateInput').value = `${yyyy}-${mm}-${dd}`;
             }
         });
 
@@ -843,6 +909,8 @@ class PlantManager {
             document.querySelectorAll('.plant-card').forEach(card => {
                 card.classList.remove('selected');
             });
+            // Save cleared selection state to localStorage
+            this.saveSelectedPlants();
         });
 
         // Archive section toggle
@@ -1026,7 +1094,7 @@ class PlantManager {
      * Render all plants in the UI
      */
     renderPlants() {
-        console.log('renderPlants called');
+        console.log('renderPlants called with tab:', this.currentTab);
         const plantList = document.getElementById('plant-list');
         if (!plantList) {
             console.log('plant-list element not found');
@@ -1043,8 +1111,11 @@ class PlantManager {
             expandedState[plantId] = this.expandedEvents[plantId];
         });
 
+        // Filter plants based on current tab
+        const plantsToRender = this.filterPlantsByPhase(this.currentTab);
+
         // Render each plant
-        this.plants.forEach((plant, index) => {
+        plantsToRender.forEach((plant, index) => {
             console.log(`Rendering plant ${index}: ${plant.name} with ${plant.events.length} events`);
             const plantCard = document.createElement('div');
             plantCard.className = 'plant-card';
@@ -1532,6 +1603,19 @@ class PlantManager {
 
             plantList.appendChild(plantCard);
         });
+    }
+
+    /**
+     * Filter plants by phase based on current tab
+     * @param {string} phase - The phase to filter by, or 'all' for all plants
+     * @returns {Plant[]} Array of plants to render
+     */
+    filterPlantsByPhase(phase) {
+        if (phase === 'all') {
+            return this.plants;
+        } else {
+            return this.plants.filter(plant => plant.phase.toLowerCase() === phase);
+        }
     }
 
     /**
